@@ -1,0 +1,8 @@
+/* Minimal stylesheet to satisfy build reference */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* You can add global overrides here. Tailwind is loaded via CDN in index.html. */
