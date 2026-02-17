@@ -717,7 +717,29 @@ app.post('/api/users/login', async (req: Request, res: Response) => {
     // First check if user exists in users collection
     let user = await db.collection('users').findOne({ email });
     
+    // If not found in users, check in admins
     if (!user) {
+      const admin = await db.collection('admins').findOne({ email });
+      if (admin) {
+        // Compare password with hash for admin
+        const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
+        if (!isPasswordValid) {
+          return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        
+        const { passwordHash: _, _id: adminId, ...rest } = admin;
+        return res.json({
+          message: 'Login successful',
+          user: { 
+            ...rest, 
+            _id: adminId, 
+            id: adminId.toString(),
+            role: 'Admin', // Explicitly set role
+            name: admin.fullName // Map fullName to name
+          }
+        });
+      }
+      
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -1380,42 +1402,8 @@ app.get('/api/clinics/registrations/:id', async (req: Request, res: Response) =>
 
 // ====================== ADMIN ENDPOINTS ======================
 
-// Admin Login: Authenticate admin from admins collection
-app.post('/api/admins/login', async (req: Request, res: Response) => {
-  try {
-    const { db } = await connectToDatabase();
-    const { email, password } = req.body;
+// Admin Login endpoint removed - merged into user login
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    // Find admin by email
-    const admin = await db.collection('admins').findOne({ email });
-
-    if (!admin) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    // Compare password with hash
-    const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    const { passwordHash: _, _id: adminId, ...rest } = admin;
-    res.json({
-      message: 'Admin login successful',
-      admin: { ...rest, _id: adminId, id: adminId.toString() }
-    });
-  } catch (error) {
-    res.status(500).json({
-      error: 'Admin login failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
 
 // Create Admin Account (for admin creation/registration)
 app.post('/api/admins/create', async (req: Request, res: Response) => {

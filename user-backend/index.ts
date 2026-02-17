@@ -27,8 +27,8 @@ app.get('/api/health', async (req: Request, res: Response) => {
     await db.command({ ping: 1 });
     res.json({ status: 'ok', message: 'MongoDB connection successful' });
   } catch (error) {
-    res.status(500).json({ 
-      status: 'error', 
+    res.status(500).json({
+      status: 'error',
       message: 'MongoDB connection failed',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -39,23 +39,23 @@ app.get('/api/health', async (req: Request, res: Response) => {
 app.get('/api/clinics', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
-    
+
     // Fetch clinics from both 'clinics' collection and approved clinic registrations
     const clinicsFromCollection = await db.collection('clinics').find({}).toArray();
     const approvedRegistrations = await db.collection('clinicRegistrations').find({ status: 'approved' }).toArray();
-    
+
     // Combine both sources, avoiding duplicates
     const allClinics = [...clinicsFromCollection];
     const clinicIds = new Set(clinicsFromCollection.map(c => c._id?.toString?.()));
-    
+
     for (const reg of approvedRegistrations) {
       if (!clinicIds.has(reg._id?.toString?.())) {
         allClinics.push(reg);
       }
     }
-    
+
     console.log(`Fetched ${allClinics.length} clinics from database (${clinicsFromCollection.length} from clinics, ${approvedRegistrations.length} approved registrations)`);
-    
+
     const formatted = allClinics.map(clinic => ({
       ...clinic,
       id: clinic._id?.toString?.() || clinic._id,
@@ -64,7 +64,7 @@ app.get('/api/clinics', async (req: Request, res: Response) => {
     res.json(formatted);
   } catch (error) {
     console.error('Error fetching clinics:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch clinics',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -78,10 +78,10 @@ app.get('/api/debug/clinic-counts', async (req: Request, res: Response) => {
     const clinicCount = await db.collection('clinics').countDocuments();
     const registrationCount = await db.collection('clinicRegistrations').countDocuments();
     const approvedCount = await db.collection('clinicRegistrations').countDocuments({ status: 'approved' });
-    
+
     const clinics = await db.collection('clinics').find({}).toArray();
     const registrations = await db.collection('clinicRegistrations').find({ status: 'approved' }).toArray();
-    
+
     res.json({
       clinicCount,
       registrationCount,
@@ -99,12 +99,12 @@ app.post('/api/clinics', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const result = await db.collection('clinics').insertOne(req.body);
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Clinic created successfully',
-      id: result.insertedId 
+      id: result.insertedId
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to create clinic',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -116,25 +116,25 @@ app.get('/api/clinics/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
-    
+
     // Try to find clinic in clinics collection first
     let clinic = await db.collection('clinics').findOne({ _id: new ObjectId(String(id)) });
-    
+
     // If not found, try clinicRegistrations collection (for approved clinics)
     if (!clinic) {
       clinic = await db.collection('clinicRegistrations').findOne({ _id: new ObjectId(String(id)), status: 'approved' });
     }
-    
+
     if (!clinic) {
       return res.status(404).json({ error: 'Clinic not found' });
     }
-    
+
     res.json({
       id: clinic._id.toString(),
       ...clinic
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch clinic',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -188,7 +188,7 @@ app.put('/api/clinics/:id', async (req: Request, res: Response) => {
 
     res.json({ message: 'Clinic updated successfully' });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to update clinic',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -211,7 +211,7 @@ app.get('/api/doctors', async (req: Request, res: Response) => {
     }));
     res.json(formatted);
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch doctors',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -223,7 +223,7 @@ app.post('/api/doctors', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { name, specialty, clinicId, email, experience, previouslyWorked, active, image, clinicName, workingDays, workingHours } = req.body;
-    
+
     if (!name || !clinicId) {
       return res.status(400).json({ error: 'Doctor name and clinicId are required' });
     }
@@ -244,15 +244,15 @@ app.post('/api/doctors', async (req: Request, res: Response) => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    
-    res.status(201).json({ 
+
+    res.status(201).json({
       message: 'Doctor created successfully',
       id: result.insertedId.toString()
     });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to create doctor', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to create doctor',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -262,7 +262,7 @@ app.put('/api/doctors/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
-    
+
     if (!ObjectId.isValid(String(id))) {
       return res.status(400).json({ error: 'Invalid doctor ID' });
     }
@@ -283,9 +283,9 @@ app.put('/api/doctors/:id', async (req: Request, res: Response) => {
 
     res.json({ message: 'Doctor updated successfully' });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to update doctor', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to update doctor',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -295,7 +295,7 @@ app.delete('/api/doctors/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
-    
+
     if (!ObjectId.isValid(String(id))) {
       return res.status(400).json({ error: 'Invalid doctor ID' });
     }
@@ -313,9 +313,9 @@ app.delete('/api/doctors/:id', async (req: Request, res: Response) => {
 
     res.json({ message: 'Doctor deleted successfully' });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to delete doctor', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to delete doctor',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -325,11 +325,11 @@ app.put('/api/doctors/:doctorId/fix-clinic/:clinicId', async (req: Request, res:
   try {
     const { db } = await connectToDatabase();
     const { doctorId, clinicId } = req.params as { doctorId: string; clinicId: string };
-    
+
     if (!ObjectId.isValid(String(doctorId))) {
       return res.status(400).json({ error: 'Invalid doctor ID' });
     }
-    
+
     if (!ObjectId.isValid(String(clinicId))) {
       return res.status(400).json({ error: 'Invalid clinic ID' });
     }
@@ -350,9 +350,9 @@ app.put('/api/doctors/:doctorId/fix-clinic/:clinicId', async (req: Request, res:
 
     res.json({ message: 'Doctor clinic ID updated successfully' });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to update doctor clinic ID', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to update doctor clinic ID',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -365,12 +365,12 @@ app.get('/api/bookings', async (req: Request, res: Response) => {
     const query: any = {};
     if (clinicId) query.clinicId = clinicId as string;
     if (doctorId) query.doctorId = doctorId as string;
-    
+
     // Exclude cancelled appointments by default unless specifically requested
     if (includeCancelled !== 'true') {
       query.status = { $ne: 'Cancelled' };
     }
-    
+
     // For patient search: use OR logic so patient can search by name OR phone
     if (patientName || patientPhone) {
       const orConditions: any[] = [];
@@ -384,26 +384,26 @@ app.get('/api/bookings', async (req: Request, res: Response) => {
         query.$or = orConditions;
       }
     }
-    
+
     console.log('Bookings query:', JSON.stringify(query));
     const bookings = await db.collection('bookings')
       .find(query)
       .sort({ appointmentDate: -1, appointmentTime: -1 })
       .toArray();
-    
+
     console.log(`Found ${bookings.length} bookings for query:`, query);
     if (patientName || patientPhone) {
       console.log('Sample bookings from DB:', bookings.slice(0, 3).map(b => ({ id: b._id, patientName: b.patientName, patientPhone: b.patientPhone })));
     }
-    
+
     const formatted = bookings.map(booking => ({
       id: booking._id.toString(),
       ...booking
     }));
-    
+
     res.json(formatted);
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch bookings',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -415,10 +415,10 @@ app.post('/api/bookings', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { clinicId, doctorId, patientName, patientEmail, patientPhone, appointmentDate, appointmentTime, notes, userId } = req.body;
-    
+
     if (!clinicId || !doctorId || !patientName || !appointmentDate || !appointmentTime) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: clinicId, doctorId, patientName, appointmentDate, appointmentTime' 
+      return res.status(400).json({
+        error: 'Missing required fields: clinicId, doctorId, patientName, appointmentDate, appointmentTime'
       });
     }
 
@@ -431,8 +431,8 @@ app.post('/api/bookings', async (req: Request, res: Response) => {
     });
 
     if (existingAppointment) {
-      return res.status(400).json({ 
-        error: 'Time slot already booked for this doctor' 
+      return res.status(400).json({
+        error: 'Time slot already booked for this doctor'
       });
     }
 
@@ -444,7 +444,7 @@ app.post('/api/bookings', async (req: Request, res: Response) => {
         status: { $ne: 'Cancelled' }
       })
       .toArray();
-    
+
     const tokenNumber = String(bookingsForDate.length + 1);
 
     const result = await db.collection('bookings').insertOne({
@@ -462,14 +462,14 @@ app.post('/api/bookings', async (req: Request, res: Response) => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    
-    res.status(201).json({ 
+
+    res.status(201).json({
       message: 'Appointment created successfully',
       id: result.insertedId.toString(),
       tokenNumber
     });
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to create appointment',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -481,7 +481,7 @@ app.put('/api/bookings/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
-    
+
     if (!ObjectId.isValid(String(id))) {
       return res.status(400).json({ error: 'Invalid booking ID' });
     }
@@ -497,7 +497,7 @@ app.put('/api/bookings/:id', async (req: Request, res: Response) => {
       if (booking) {
         const newDate = req.body.appointmentDate || booking.appointmentDate;
         const newTime = req.body.appointmentTime || booking.appointmentTime;
-        
+
         const conflict = await db.collection('bookings').findOne({
           _id: { $ne: new ObjectId(id) },
           doctorId: booking.doctorId,
@@ -505,10 +505,10 @@ app.put('/api/bookings/:id', async (req: Request, res: Response) => {
           appointmentTime: newTime,
           status: { $nin: ['Cancelled', 'Rejected'] }
         });
-        
+
         if (conflict) {
-          return res.status(400).json({ 
-            error: 'Time slot already booked for this doctor' 
+          return res.status(400).json({
+            error: 'Time slot already booked for this doctor'
           });
         }
       }
@@ -525,9 +525,9 @@ app.put('/api/bookings/:id', async (req: Request, res: Response) => {
 
     res.json({ message: 'Appointment updated successfully' });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to update appointment', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to update appointment',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -537,7 +537,7 @@ app.put('/api/bookings/:id/cancel', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
-    
+
     if (!ObjectId.isValid(String(id))) {
       return res.status(400).json({ error: 'Invalid booking ID' });
     }
@@ -553,9 +553,9 @@ app.put('/api/bookings/:id/cancel', async (req: Request, res: Response) => {
 
     res.json({ message: 'Appointment cancelled successfully' });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to cancel appointment', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to cancel appointment',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -565,7 +565,7 @@ app.delete('/api/bookings/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
-    
+
     if (!ObjectId.isValid(String(id))) {
       return res.status(400).json({ error: 'Invalid booking ID' });
     }
@@ -588,9 +588,9 @@ app.delete('/api/bookings/:id', async (req: Request, res: Response) => {
 
     res.json({ message: 'Appointment cancelled successfully' });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to cancel appointment', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to cancel appointment',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -600,7 +600,7 @@ app.put('/api/bookings/:id/cancel-by-clinic', async (req: Request, res: Response
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
-    
+
     if (!ObjectId.isValid(String(id))) {
       return res.status(400).json({ error: 'Invalid booking ID' });
     }
@@ -623,9 +623,9 @@ app.put('/api/bookings/:id/cancel-by-clinic', async (req: Request, res: Response
 
     res.json({ message: 'Appointment cancelled by clinic successfully' });
   } catch (error) {
-    res.status(500).json({ 
-      error: 'Failed to cancel appointment', 
-      message: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      error: 'Failed to cancel appointment',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -698,7 +698,7 @@ app.get('/api/bookings/user/:userId', async (req: Request, res: Response) => {
 
     res.json(formatted);
   } catch (error) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch user bookings',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -716,8 +716,30 @@ app.post('/api/users/login', async (req: Request, res: Response) => {
 
     // First check if user exists in users collection
     let user = await db.collection('users').findOne({ email });
-    
+
+    // If not found in users, check in admins
     if (!user) {
+      const admin = await db.collection('admins').findOne({ email });
+      if (admin) {
+        // Compare password with hash for admin
+        const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
+        if (!isPasswordValid) {
+          return res.status(401).json({ error: 'Invalid email or password' });
+        }
+
+        const { passwordHash: _, _id: adminId, ...rest } = admin;
+        return res.json({
+          message: 'Login successful',
+          user: {
+            ...rest,
+            _id: adminId,
+            id: adminId.toString(),
+            role: 'Admin', // Explicitly set role
+            name: admin.fullName // Map fullName to name
+          }
+        });
+      }
+
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -728,16 +750,16 @@ app.post('/api/users/login', async (req: Request, res: Response) => {
       const clinicRegistration = await db
         .collection('clinicRegistrations')
         .findOne({ email });
-      
+
       if (clinicRegistration) {
         if (clinicRegistration.status === 'pending') {
-          return res.status(403).json({ 
-            error: 'Clinic registration is still pending approval. Please wait for admin approval.' 
+          return res.status(403).json({
+            error: 'Clinic registration is still pending approval. Please wait for admin approval.'
           });
         }
         if (clinicRegistration.status === 'rejected') {
-          return res.status(403).json({ 
-            error: 'Clinic registration was rejected. Please contact support.' 
+          return res.status(403).json({
+            error: 'Clinic registration was rejected. Please contact support.'
           });
         }
       }
@@ -1536,6 +1558,7 @@ app.post('/api/contact', async (req: Request, res: Response) => {
 });
 
 // Chatbot endpoint
+// Chatbot endpoint
 app.post('/api/chatbot', async (req: Request, res: Response) => {
   try {
     const { message } = req.body;
@@ -1548,8 +1571,51 @@ app.post('/api/chatbot', async (req: Request, res: Response) => {
       });
     }
 
+    // Connect to DB to fetch context
+    const { db } = await connectToDatabase();
+
+    // Fetch clinics (including approved registrations)
+    const clinics = await db.collection('clinics').find({}).toArray();
+    const approvedRegistrations = await db.collection('clinicRegistrations').find({ status: 'approved' }).toArray();
+
+    // Combine clinics
+    const allClinics = [...clinics];
+    const clinicIds = new Set(clinics.map(c => c._id.toString()));
+    for (const reg of approvedRegistrations) {
+      if (!clinicIds.has(reg._id.toString())) {
+        allClinics.push(reg);
+      }
+    }
+
+    // Fetch doctors
+    const doctors = await db.collection('doctors').find({}).toArray();
+
+    // Format context data
+    let contextData = "Here is the list of available clinics and doctors:\n\n";
+
+    contextData += "CLINICS:\n";
+    allClinics.forEach(clinic => {
+      contextData += `- Name: ${clinic.name}\n`;
+      contextData += `  Location: ${clinic.location}\n`;
+      contextData += `  Specialties: ${clinic.specialties ? clinic.specialties.join(', ') : 'General'}\n`;
+      contextData += `  Working Hours: ${clinic.workingHours || 'Not specified'}\n`;
+      contextData += `  Description: ${clinic.description || 'N/A'}\n\n`;
+    });
+
+    contextData += "DOCTORS:\n";
+    doctors.forEach(doc => {
+      // Find clinic name for doctor
+      const clinic = allClinics.find(c => c._id.toString() === doc.clinicId);
+      const clinicName = clinic ? clinic.name : 'Unknown Clinic';
+
+      contextData += `- Name: ${doc.name}\n`;
+      contextData += `  Specialization: ${doc.specialization}\n`;
+      contextData += `  Experience: ${doc.experience} years\n`;
+      contextData += `  Clinic: ${clinicName}\n\n`;
+    });
+
     // Get response from chatbot service
-    const reply = await getChatbotResponse(message);
+    const reply = await getChatbotResponse(message, contextData);
 
     res.json({
       ok: true,

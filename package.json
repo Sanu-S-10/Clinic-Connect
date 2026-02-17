@@ -15,14 +15,14 @@
     "setup:demo": "npm run admin:create"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "html2canvas": "^1.4.1",
     "mongodb": "^7.0.0",
-    "nodemailer": "^6.9.4",
-    "openai": "^6.17.0",
+    "nodemailer": "^8.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.0"
