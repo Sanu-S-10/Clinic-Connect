@@ -3,7 +3,8 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { sendOtpEmail, sendContactEmail } from './services/email.js';
+import cron from 'node-cron';
+import { sendOtpEmail, sendContactEmail, sendAppointmentConfirmationEmail, sendAppointmentReminderEmail } from './services/email.js';
 import { getChatbotResponse } from './services/chatbot.js';
 import { generateOtp, hashOtp, storeOtp, getResetRecord, incrementAttempts, deleteReset, markVerified, OTP_TTL_MINUTES, OTP_MAX_ATTEMPTS } from './services/otp.js';
 import { ObjectId } from 'mongodb';
@@ -462,6 +463,41 @@ app.post('/api/bookings', async (req: Request, res: Response) => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
+
+    // Send appointment confirmation email if email is provided
+    if (patientEmail) {
+      try {
+        // Fetch doctor and clinic details for email
+        let clinic = await db.collection('clinics').findOne({ _id: new ObjectId(String(clinicId)) });
+        if (!clinic) {
+          clinic = await db.collection('clinicRegistrations').findOne({ _id: new ObjectId(String(clinicId)), status: 'approved' });
+        }
+
+        let doctor = await db.collection('doctors').findOne({ _id: new ObjectId(String(doctorId)) });
+
+        const clinicName = clinic?.name || 'Clinic';
+        const doctorName = doctor?.name || 'Doctor';
+        const clinicAddress = clinic?.address || clinic?.location || '';
+        const clinicPhone = clinic?.phone || '';
+
+        await sendAppointmentConfirmationEmail(
+          patientEmail,
+          patientName,
+          clinicName,
+          doctorName,
+          appointmentDate,
+          appointmentTime,
+          tokenNumber,
+          clinicAddress,
+          clinicPhone
+        );
+
+        console.log(`[Booking] Confirmation email sent to ${patientEmail}`);
+      } catch (emailError) {
+        console.error('[Booking] Failed to send confirmation email:', emailError);
+        // Continue even if email fails - don't block the booking
+      }
+    }
 
     res.status(201).json({
       message: 'Appointment created successfully',
@@ -1630,7 +1666,264 @@ app.post('/api/chatbot', async (req: Request, res: Response) => {
   }
 });
 
-app.listen(PORT, () => {
+// Check and send appointment reminders (for appointments 24 hours from now)
+// This can be called manually or by a scheduled job (e.g., cron job)
+app.post('/api/appointments/send-reminders', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    
+    // Get current date/time
+    const now = new Date();
+    
+    // Calculate tomorrow's date (24 hours from now)
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Format tomorrow's date as YYYY-MM-DD for comparison
+    const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
+    
+    console.log(`[Reminders] Checking for appointments on ${tomorrowDateStr}`);
+    
+    // Find all appointments scheduled for tomorrow that haven't been reminded yet
+    const appointmentsToRemind = await db.collection('bookings')
+      .find({
+        appointmentDate: tomorrowDateStr,
+        status: { $nin: ['Cancelled', 'Rejected'] },
+        reminderSent: { $ne: true }
+      })
+      .toArray();
+    
+    console.log(`[Reminders] Found ${appointmentsToRemind.length} appointments to remind`);
+    
+    let sentCount = 0;
+    let failedCount = 0;
+    
+    // Send reminder emails for each appointment
+    for (const appointment of appointmentsToRemind) {
+      try {
+        // Skip if no patient email
+        if (!appointment.patientEmail) {
+          console.log(`[Reminders] Skipping appointment ${appointment._id} - no email`);
+          continue;
+        }
+        
+        // Fetch clinic and doctor details
+        let clinic = await db.collection('clinics').findOne({ _id: new ObjectId(String(appointment.clinicId)) });
+        if (!clinic) {
+          clinic = await db.collection('clinicRegistrations').findOne({ 
+            _id: new ObjectId(String(appointment.clinicId)), 
+            status: 'approved' 
+          });
+        }
+        
+        let doctor = await db.collection('doctors').findOne({ _id: new ObjectId(String(appointment.doctorId)) });
+        
+        const clinicName = clinic?.name || 'Clinic';
+        const doctorName = doctor?.name || 'Doctor';
+        const clinicAddress = clinic?.address || clinic?.location || '';
+        const clinicPhone = clinic?.phone || '';
+        
+        // Send reminder email
+        await sendAppointmentReminderEmail(
+          appointment.patientEmail,
+          appointment.patientName,
+          clinicName,
+          doctorName,
+          appointment.appointmentDate,
+          appointment.appointmentTime,
+          appointment.tokenNumber,
+          clinicAddress,
+          clinicPhone
+        );
+        
+        // Mark appointment as reminder sent
+        await db.collection('bookings').updateOne(
+          { _id: new ObjectId(appointment._id) },
+          { $set: { reminderSent: true, reminderSentAt: new Date() } }
+        );
+        
+        console.log(`[Reminders] Reminder sent for appointment ${appointment._id}`);
+        sentCount++;
+      } catch (err) {
+        console.error(`[Reminders] Failed to send reminder for appointment ${appointment._id}:`, err);
+        failedCount++;
+      }
+    }
+    
+    res.json({
+      message: 'Reminder job completed',
+      total: appointmentsToRemind.length,
+      sent: sentCount,
+      failed: failedCount
+    });
+  } catch (error) {
+    console.error('[Reminders] Error in reminder job:', error);
+    res.status(500).json({
+      error: 'Failed to process reminders',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Manual endpoint to send a reminder for a specific appointment (for testing)
+app.post('/api/appointments/:id/send-reminder', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const { id } = req.params as { id: string };
+    
+    if (!ObjectId.isValid(String(id))) {
+      return res.status(400).json({ error: 'Invalid appointment ID' });
+    }
+    
+    const appointment = await db.collection('bookings').findOne({ _id: new ObjectId(String(id)) });
+    
+    if (!appointment) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+    
+    if (!appointment.patientEmail) {
+      return res.status(400).json({ error: 'Patient email not found' });
+    }
+    
+    // Fetch clinic and doctor details
+    let clinic = await db.collection('clinics').findOne({ _id: new ObjectId(String(appointment.clinicId)) });
+    if (!clinic) {
+      clinic = await db.collection('clinicRegistrations').findOne({ 
+        _id: new ObjectId(String(appointment.clinicId)), 
+        status: 'approved' 
+      });
+    }
+    
+    let doctor = await db.collection('doctors').findOne({ _id: new ObjectId(String(appointment.doctorId)) });
+    
+    const clinicName = clinic?.name || 'Clinic';
+    const doctorName = doctor?.name || 'Doctor';
+    const clinicAddress = clinic?.address || clinic?.location || '';
+    const clinicPhone = clinic?.phone || '';
+    
+    // Send reminder email
+    await sendAppointmentReminderEmail(
+      appointment.patientEmail,
+      appointment.patientName,
+      clinicName,
+      doctorName,
+      appointment.appointmentDate,
+      appointment.appointmentTime,
+      appointment.tokenNumber,
+      clinicAddress,
+      clinicPhone
+    );
+    
+    // Mark appointment as reminder sent
+    await db.collection('bookings').updateOne(
+      { _id: new ObjectId(appointment._id) },
+      { $set: { reminderSent: true, reminderSentAt: new Date() } }
+    );
+    
+    res.json({ message: 'Reminder sent successfully' });
+  } catch (error) {
+    console.error('[Reminder] Error sending reminder:', error);
+    res.status(500).json({
+      error: 'Failed to send reminder',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`Test health endpoint: http://localhost:${PORT}/api/health`);
 });
+
+// Schedule appointment reminders to run daily at 10:00 AM
+cron.schedule('0 10 * * *', async () => {
+  try {
+    console.log('[Scheduler] Running scheduled appointment reminders...');
+    
+    const { db } = await connectToDatabase();
+    
+    // Get current date/time
+    const now = new Date();
+    
+    // Calculate tomorrow's date (24 hours from now)
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    // Format tomorrow's date as YYYY-MM-DD for comparison
+    const tomorrowDateStr = tomorrow.toISOString().split('T')[0];
+    
+    console.log(`[Scheduler] Checking for appointments on ${tomorrowDateStr}`);
+    
+    // Find all appointments scheduled for tomorrow that haven't been reminded yet
+    const appointmentsToRemind = await db.collection('bookings')
+      .find({
+        appointmentDate: tomorrowDateStr,
+        status: { $nin: ['Cancelled', 'Rejected'] },
+        reminderSent: { $ne: true }
+      })
+      .toArray();
+    
+    console.log(`[Scheduler] Found ${appointmentsToRemind.length} appointments to remind`);
+    
+    let sentCount = 0;
+    let failedCount = 0;
+    
+    // Send reminder emails for each appointment
+    for (const appointment of appointmentsToRemind) {
+      try {
+        // Skip if no patient email
+        if (!appointment.patientEmail) {
+          console.log(`[Scheduler] Skipping appointment ${appointment._id} - no email`);
+          continue;
+        }
+        
+        // Fetch clinic and doctor details
+        let clinic = await db.collection('clinics').findOne({ _id: new ObjectId(String(appointment.clinicId)) });
+        if (!clinic) {
+          clinic = await db.collection('clinicRegistrations').findOne({ 
+            _id: new ObjectId(String(appointment.clinicId)), 
+            status: 'approved' 
+          });
+        }
+        
+        let doctor = await db.collection('doctors').findOne({ _id: new ObjectId(String(appointment.doctorId)) });
+        
+        const clinicName = clinic?.name || 'Clinic';
+        const doctorName = doctor?.name || 'Doctor';
+        const clinicAddress = clinic?.address || clinic?.location || '';
+        const clinicPhone = clinic?.phone || '';
+        
+        // Send reminder email
+        await sendAppointmentReminderEmail(
+          appointment.patientEmail,
+          appointment.patientName,
+          clinicName,
+          doctorName,
+          appointment.appointmentDate,
+          appointment.appointmentTime,
+          appointment.tokenNumber,
+          clinicAddress,
+          clinicPhone
+        );
+        
+        // Mark appointment as reminder sent
+        await db.collection('bookings').updateOne(
+          { _id: new ObjectId(appointment._id) },
+          { $set: { reminderSent: true, reminderSentAt: new Date() } }
+        );
+        
+        console.log(`[Scheduler] Reminder sent for appointment ${appointment._id}`);
+        sentCount++;
+      } catch (err) {
+        console.error(`[Scheduler] Failed to send reminder for appointment ${appointment._id}:`, err);
+        failedCount++;
+      }
+    }
+    
+    console.log(`[Scheduler] Reminder job completed - Total: ${appointmentsToRemind.length}, Sent: ${sentCount}, Failed: ${failedCount}`);
+  } catch (error) {
+    console.error('[Scheduler] Error in scheduled reminder job:', error);
+  }
+});
+
+console.log('[Scheduler] Appointment reminder job scheduled to run daily at 10:00 AM (0 10 * * *)');

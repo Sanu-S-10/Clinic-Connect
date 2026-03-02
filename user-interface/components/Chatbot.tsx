@@ -7,6 +7,28 @@ interface Message {
   timestamp: Date;
 }
 
+// Convert Markdown to HTML
+const renderMarkdown = (text: string): string => {
+  let html = text;
+  
+  // Bold: **text** or __text__
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  
+  // Italic: *text* or _text_
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+  
+  // Bullet points: * item or - item
+  html = html.replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc ml-4 my-2">$&</ul>');
+  
+  // Line breaks
+  html = html.replace(/\n/g, '<br />');
+  
+  return html;
+};
+
 const Chatbot: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -134,7 +156,10 @@ const Chatbot: React.FC = () => {
                       : 'bg-gray-200 text-gray-900 rounded-bl-none'
                   }`}
                 >
-                  <p className="text-sm">{message.text}</p>
+                  <div 
+                    className="text-sm" 
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(message.text) }}
+                  />
                 </div>
               </div>
             ))}

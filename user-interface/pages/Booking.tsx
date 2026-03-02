@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
+import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
 import { createBooking, getDoctors, getClinics } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import AlertModal, { AlertState } from '../components/AlertModal';
@@ -8,6 +8,7 @@ import html2canvas from 'html2canvas';
 
 const Booking: React.FC = () => {
   const { doctorId } = useParams<{ doctorId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [doctor, setDoctor] = useState<any | null>(null);
   const [clinic, setClinic] = useState<any | null>(null);
@@ -364,6 +365,15 @@ const Booking: React.FC = () => {
             <div className="flex gap-3">
               <Link 
                 to="/" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate('/');
+                  setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    document.documentElement.scrollTop = 0;
+                    document.body.scrollTop = 0;
+                  }, 0);
+                }}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-center text-sm font-bold shadow-lg transition-all"
               >
                 Home

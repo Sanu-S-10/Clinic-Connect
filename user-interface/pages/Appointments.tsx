@@ -84,7 +84,9 @@ const Appointments: React.FC = () => {
   const isAppointmentUpcoming = (dateStr: string, timeStr: string) => {
     try {
       let appointmentDate = new Date(dateStr);
-      const [hours, minutes] = timeStr.split(':').map(Number);
+      // Handle time range format like "17:00 - 18:00" by extracting start time
+      const startTime = timeStr.split(' - ')[0].trim();
+      const [hours, minutes] = startTime.split(':').map(Number);
       appointmentDate.setHours(hours, minutes, 0, 0);
       return appointmentDate > new Date();
     } catch {
@@ -231,7 +233,7 @@ const Appointments: React.FC = () => {
                 : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
             }`}
           >
-            Upcoming ({appointments.filter(a => isAppointmentUpcoming(a.appointmentDate, a.appointmentTime)).length})
+            Upcoming ({appointments.filter(a => isAppointmentUpcoming(a.appointmentDate, a.appointmentTime) && a.status !== 'Cancelled').length})
           </button>
           <button
             onClick={() => setFilter('past')}

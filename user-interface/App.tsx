@@ -19,10 +19,21 @@ import { changePassword } from './services/api';
 
 const LogoBar: React.FC = () => {
   const { user } = useAuth();
-  const logoTarget = user?.role === 'Clinic Admin' ? '/clinic-admin' : { pathname: '/', hash: 'home' };
+  const navigate = useNavigate();
+  const logoTarget = user?.role === 'Clinic Admin' ? '/clinic-admin' : '/';
   return (
     <nav className="sticky top-0 z-50 frosted-glass py-5 px-6 md:px-12 flex items-center border-b border-gray-100/40">
-      <Link to={logoTarget} className="flex items-center space-x-3 group">
+      <Link 
+        to="/" 
+        onClick={(e) => {
+          e.preventDefault();
+          navigate('/');
+          window.scrollTo(0, 0);
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+        }}
+        className="flex items-center space-x-3 group"
+      >
         <img src="/favicon.svg" alt="ClinicConnect" className="w-10 h-10 group-hover:opacity-80 transition-all" />
         <span className="text-xl font-bold text-gray-900 tracking-tight">ClinicConnect</span>
       </Link>
@@ -141,7 +152,16 @@ const AdminNavbar: React.FC = () => {
                 </div>
                     <Link
                       to="/"
-                      onClick={() => setProfileOpen(false)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setProfileOpen(false);
+                        navigate('/');
+                        setTimeout(() => {
+                          window.scrollTo(0, 0);
+                          document.documentElement.scrollTop = 0;
+                          document.body.scrollTop = 0;
+                        }, 0);
+                      }}
                       className="w-full px-5 py-3 text-left text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors flex items-center space-x-2 block"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,14 +356,37 @@ const Navbar: React.FC = () => {
   return (
     <nav className="sticky top-0 z-50 frosted-glass py-5 px-6 md:px-12 flex items-center justify-between border-b border-gray-100/40">
       {/* Logo on the left with Name */}
-      <Link to={logoTarget} className="flex items-center space-x-3 group">
+      <Link 
+        to={logoTarget} 
+        onClick={(e) => {
+          if (logoTarget === '/') {
+            e.preventDefault();
+            window.location.hash = '';
+            navigate('/', { replace: true });
+            setTimeout(() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 50);
+          }
+        }}
+        className="flex items-center space-x-3 group"
+      >
         <img src="/favicon.svg" alt="ClinicConnect" className="w-10 h-10 rounded-xl group-hover:opacity-80 transition-all shadow-lg shadow-blue-100 object-contain" />
         <span className="text-xl font-bold text-gray-900 tracking-tight">ClinicConnect</span>
       </Link>
 
       {/* Anchor links: Home, Services, Features, Contact, About */}
       <div className="hidden md:flex items-center space-x-6">
-        <Link to="/#home" className="text-gray-500 hover:text-blue-700 font-semibold transition-colors text-sm">
+        <Link 
+          to="/" 
+          onClick={(e) => {
+            e.preventDefault();
+            navigate('/');
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+          }}
+          className="text-gray-500 hover:text-blue-700 font-semibold transition-colors text-sm"
+        >
           Home
         </Link>
         <Link to="/#services" className="text-gray-500 hover:text-blue-700 font-semibold transition-colors text-sm">
@@ -388,7 +431,16 @@ const Navbar: React.FC = () => {
                 </div>
                 <Link
                   to="/"
-                  onClick={() => setProfileOpen(false)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setProfileOpen(false);
+                    navigate('/');
+                    setTimeout(() => {
+                      window.scrollTo(0, 0);
+                      document.documentElement.scrollTop = 0;
+                      document.body.scrollTop = 0;
+                    }, 0);
+                  }}
                   className="w-full px-5 py-3 text-left text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors flex items-center space-x-2 block"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -530,9 +582,23 @@ const Footer: React.FC = () => (
 );
 
 const ScrollToTop = () => {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   React.useEffect(() => {
-    window.scrollTo(0, 0);
+    // Always scroll to top for home page with multiple methods for reliability
+    if (pathname === '/') {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      
+      // Retry after a small delay to ensure it works
+      const timer = setTimeout(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }, 10);
+      
+      return () => clearTimeout(timer);
+    }
   }, [pathname]);
   return null;
 };

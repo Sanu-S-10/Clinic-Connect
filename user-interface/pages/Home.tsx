@@ -10,21 +10,27 @@ const Home: React.FC = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      // Get the hash from the URL, removing leading # if present
-      const hash = window.location.hash.replace('#/', '').replace('#', '') || 'home';
-      const el = document.getElementById(hash);
-      if (el) {
-        setTimeout(() => {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+      // Get the hash from the URL
+      const hash = window.location.hash.replace('#/', '').replace('#', '');
+      
+      // Only scroll to sections if there's an actual hash
+      if (hash && hash !== '') {
+        const el = document.getElementById(hash);
+        if (el) {
+          setTimeout(() => {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
       }
     };
 
     // Listen for hash changes
     window.addEventListener('hashchange', handleScroll);
     
-    // Scroll on initial mount or when location changes
-    handleScroll();
+    // Scroll on hash change (not on initial mount without hash)
+    if (window.location.hash) {
+      handleScroll();
+    }
 
     return () => window.removeEventListener('hashchange', handleScroll);
   }, [location]);
