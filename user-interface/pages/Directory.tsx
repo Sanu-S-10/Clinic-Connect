@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { getClinics, getDoctors } from '../services/api';
+import { normalizeSpecialty, getUniqueCanonicalSpecialties } from '../utils/specialtyMapping';
 import ClinicCard from '../components/ClinicCard';
 
 const Directory: React.FC = () => {
@@ -43,12 +44,13 @@ const Directory: React.FC = () => {
 
     // Filter by doctor specialty
     if (selectedSpecialty) {
+      const normalizedSelectedSpecialty = normalizeSpecialty(selectedSpecialty);
       const clinicIdsWithSpecialty = new Set(
         doctors
           .filter(doctor => {
             const docClinicId = doctor?.clinicId?.toString?.() || String(doctor?.clinicId || '');
-            const specialty = (doctor.specialty || '').toLowerCase();
-            return specialty === selectedSpecialty.toLowerCase();
+            const normalizedDocSpecialty = normalizeSpecialty(doctor.specialty || '');
+            return normalizedDocSpecialty === normalizedSelectedSpecialty;
           })
           .map(doctor => {
             const docClinicId = doctor?.clinicId?.toString?.() || String(doctor?.clinicId || '');
@@ -65,14 +67,12 @@ const Directory: React.FC = () => {
     return filtered;
   }, [clinics, doctors, searchQuery, selectedLocation, selectedSpecialty]);
 
-  // Get unique specialties from doctors
+  // Get unique canonical specialties from doctors
   const specialties = useMemo(() => {
-    const specs = new Set(
-      doctors
-        .filter(d => d.specialty)
-        .map(d => d.specialty.trim())
-    );
-    return Array.from(specs).sort();
+    const allSpecialties = doctors
+      .filter(d => d.specialty)
+      .map(d => d.specialty);
+    return getUniqueCanonicalSpecialties(allSpecialties);
   }, [doctors]);
 
   return (
