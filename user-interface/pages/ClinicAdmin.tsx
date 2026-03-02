@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getDoctors, getBookings, createDoctor, updateDoctor, deleteDoctor, createBooking, updateBooking, getClinicProfile, updateClinicProfile, fixDoctorClinicId, getAppointmentsByClinic, cancelBooking, cancelAppointmentByClinic, deleteBooking, deleteClinic } from '../services/api';
 import html2canvas from 'html2canvas';
 import AlertModal, { AlertState } from '../components/AlertModal';
+import { getUniqueCanonicalSpecialties, specialtyMapping } from '../utils/specialtyMapping';
 
 type Doctor = {
   id: string;
@@ -128,6 +129,8 @@ const ClinicAdmin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard'|'doctors'|'appointments'|'schedule'|'profile'>('dashboard');
   const [showDoctorModal, setShowDoctorModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<LocalDoctor | null>(null);
+  const [showSpecialtySuggestions, setShowSpecialtySuggestions] = useState(false);
+  const [specialtySuggestions, setSpecialtySuggestions] = useState<string[]>([]);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [showDeleteClinicModal, setShowDeleteClinicModal] = useState(false);
@@ -155,6 +158,30 @@ const ClinicAdmin: React.FC = () => {
 
   // Doctor CRUD
   const openAddDoctor = () => { setEditingDoctor({ id: '', name: '', specialty: '', specialties: [], clinicId: '', experience: '', previouslyWorked: '', email: '', active: true }); setShowDoctorModal(true); };
+  
+  const handleSpecialtyInput = (value: string) => {
+    setEditingDoctor(d => d && { ...d, specialty: value, specialties: [value] } as LocalDoctor);
+    
+    if (value.trim()) {
+      // Get all unique canonical specialties from the mapping
+      const allCanonicalSpecialties = Array.from(new Set(Object.values(specialtyMapping))).sort();
+      const filtered = allCanonicalSpecialties.filter(spec =>
+        spec.toLowerCase().includes(value.toLowerCase())
+      );
+      setSpecialtySuggestions(filtered);
+      setShowSpecialtySuggestions(filtered.length > 0);
+    } else {
+      setShowSpecialtySuggestions(false);
+      setSpecialtySuggestions([]);
+    }
+  };
+  
+  const handleSelectSpecialty = (specialty: string) => {
+    setEditingDoctor(d => d && { ...d, specialty, specialties: [specialty] } as LocalDoctor);
+    setShowSpecialtySuggestions(false);
+    setSpecialtySuggestions([]);
+  };
+
   const handleEditDoctor = (d: LocalDoctor) => { setEditingDoctor(d); setShowDoctorModal(true); };
   const handleSaveDoctor = async (d: LocalDoctor) => {
     if (!d.name.trim()) {
@@ -799,12 +826,38 @@ const ClinicAdmin: React.FC = () => {
               
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Specialty *</label>
-                <input 
-                  value={editingDoctor.specialty} 
-                  onChange={e => setEditingDoctor(d => d && { ...d, specialty: e.target.value, specialties: [e.target.value] } as LocalDoctor)} 
-                  placeholder="e.g., Cardiology, Pediatrics" 
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                />
+                <div className="relative">
+                  <input 
+                    value={editingDoctor.specialty} 
+                    onChange={e => handleSpecialtyInput(e.target.value)}
+                    onFocus={() => {
+                      if (editingDoctor.specialty.trim()) {
+                        const allCanonicalSpecialties = Array.from(new Set(Object.values(specialtyMapping))).sort();
+                        const filtered = allCanonicalSpecialties.filter(spec =>
+                          spec.toLowerCase().includes(editingDoctor.specialty.toLowerCase())
+                        );
+                        setSpecialtySuggestions(filtered);
+                        setShowSpecialtySuggestions(filtered.length > 0);
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setShowSpecialtySuggestions(false), 150)}
+                    placeholder="e.g., Cardiology, Pediatrics" 
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  />
+                  {showSpecialtySuggestions && specialtySuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 border-t-0 rounded-b shadow-lg z-50">
+                      {specialtySuggestions.map((specialty, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => handleSelectSpecialty(specialty)}
+                          className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-gray-700 text-sm border-b last:border-b-0"
+                        >
+                          {specialty}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div>
