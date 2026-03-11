@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AlertModal, { AlertState } from '../components/AlertModal';
+import AdminUsers from './AdminUsers';
 
 interface ProfessionalData {
   id: string;
@@ -26,12 +27,15 @@ const Admin: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Redirect if not a Clinic Admin
+  // Redirect if not an allowed role
   useEffect(() => {
-    if (!user || user.role !== 'Clinic Admin') {
+    if (!user || (user.role !== 'Clinic Admin' && user.role !== 'Admin')) {
       navigate('/login');
     }
   }, [user, navigate]);
+
+  // Render User Management for Admin role
+  if (user?.role === 'Admin') return <AdminUsers />;
 
   // State management
   const [clinicName, setClinicName] = useState('');

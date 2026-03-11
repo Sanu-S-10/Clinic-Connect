@@ -12,6 +12,7 @@ import Admin from './pages/Admin';
 import ClinicAdmin from './pages/ClinicAdmin';
 import ClinicRegister from './pages/ClinicRegister';
 import AdminApproval from './pages/AdminApproval';
+import AdminUsers from './pages/AdminUsers';
 import Appointments from './pages/Appointments';
 import Chatbot from './components/Chatbot';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -21,10 +22,10 @@ const LogoBar: React.FC = () => {
   const { user } = useAuth();
   const logoTarget = user?.role === 'Clinic Admin' ? '/clinic-admin' : { pathname: '/', hash: 'home' };
   return (
-    <nav className="sticky top-0 z-50 frosted-glass py-5 px-6 md:px-12 flex items-center border-b border-gray-100/40">
+    <nav className="sticky top-0 z-50 frosted-glass py-4 px-4 md:py-5 md:px-12 flex items-center border-b border-gray-100/40">
       <Link to={logoTarget} className="flex items-center space-x-3 group">
         <img src="/favicon.svg" alt="ClinicConnect" className="w-10 h-10 group-hover:opacity-80 transition-all" />
-        <span className="text-xl font-bold text-gray-900 tracking-tight">ClinicConnect</span>
+        <span className="hidden sm:inline text-xl font-bold text-gray-900 tracking-tight">ClinicConnect</span>
       </Link>
     </nav>
   );
@@ -98,14 +99,14 @@ const AdminNavbar: React.FC = () => {
     }
   };
 
-  const logoTarget = user?.role === 'Clinic Admin' ? '/clinic-admin' : { pathname: '/', hash: 'home' };
+  const logoTarget = user?.role === 'Clinic Admin' ? '/clinic-admin' : user?.role === 'Admin' ? '/admin' : { pathname: '/', hash: 'home' };
 
   return (
-    <nav className="sticky top-0 z-50 frosted-glass py-5 px-6 md:px-12 flex items-center justify-between border-b border-gray-100/40">
+    <nav className="sticky top-0 z-50 frosted-glass py-4 px-4 md:py-5 md:px-12 flex items-center justify-between border-b border-gray-100/40">
       {/* Logo on the left */}
       <Link to={logoTarget} className="flex items-center space-x-3 group">
         <img src="/favicon.svg" alt="ClinicConnect" className="w-10 h-10 rounded-xl group-hover:opacity-80 transition-all shadow-lg shadow-blue-100 object-contain" />
-        <span className="text-xl font-bold text-gray-900 tracking-tight">ClinicConnect</span>
+        <span className="hidden sm:inline text-xl font-bold text-gray-900 tracking-tight">ClinicConnect</span>
       </Link>
 
       {/* Admin Title */}
@@ -128,7 +129,7 @@ const AdminNavbar: React.FC = () => {
               </span>
             </button>
             {profileOpen && (
-              <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white border border-gray-100 shadow-xl shadow-gray-100/50 py-4 overflow-hidden z-50">
+              <div className="absolute right-0 mt-2 w-[min(18rem,calc(100vw-1rem))] rounded-2xl bg-white border border-gray-100 shadow-xl shadow-gray-100/50 py-4 overflow-hidden z-50">
                 <div className="px-5 pb-3 border-b border-gray-100">
                   <p className="font-bold text-gray-900 truncate">{user.name || user.email}</p>
                   <p className="text-sm text-gray-500 truncate">{user.email}</p>
@@ -139,6 +140,7 @@ const AdminNavbar: React.FC = () => {
                     {user.role}
                   </span>
                 </div>
+                    {user.role !== 'Admin' && (
                     <Link
                       to="/"
                       onClick={() => setProfileOpen(false)}
@@ -149,18 +151,19 @@ const AdminNavbar: React.FC = () => {
                       </svg>
                       <span>Back to Home</span>
                     </Link>
+                    )}
 
                     {user.role === 'Admin' && (
-                      <Link
-                        to="/admin/approvals"
-                        onClick={() => setProfileOpen(false)}
-                        className="w-full px-5 py-3 text-left text-sm font-semibold text-blue-600 hover:bg-gray-50 transition-colors flex items-center space-x-2 block"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m2 0a2 2 0 01-2 2H7a2 2 0 01-2-2" />
-                        </svg>
-                        <span>Approvals</span>
-                      </Link>
+                        <Link
+                          to="/admin/approvals"
+                          onClick={() => setProfileOpen(false)}
+                          className="w-full px-5 py-3 text-left text-sm font-semibold text-blue-600 hover:bg-gray-50 transition-colors flex items-center space-x-2 block"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-6a2 2 0 012-2h2a2 2 0 012 2v6m2 0a2 2 0 01-2 2H7a2 2 0 01-2-2" />
+                          </svg>
+                          <span>Approvals</span>
+                        </Link>
                     )}
                 <button
                   type="button"
@@ -334,11 +337,11 @@ const Navbar: React.FC = () => {
   const logoTarget = user?.role === 'Clinic Admin' ? '/clinic-admin' : '/';
 
   return (
-    <nav className="sticky top-0 z-50 frosted-glass py-5 px-6 md:px-12 flex items-center justify-between border-b border-gray-100/40">
+    <nav className="sticky top-0 z-50 frosted-glass py-4 px-4 md:py-5 md:px-12 flex items-center justify-between border-b border-gray-100/40">
       {/* Logo on the left with Name */}
-      <Link to={logoTarget} className="flex items-center space-x-3 group">
+      <Link to={logoTarget} className="flex items-center space-x-2 sm:space-x-3 group">
         <img src="/favicon.svg" alt="ClinicConnect" className="w-10 h-10 rounded-xl group-hover:opacity-80 transition-all shadow-lg shadow-blue-100 object-contain" />
-        <span className="text-xl font-bold text-gray-900 tracking-tight">ClinicConnect</span>
+        <span className="hidden sm:inline text-xl font-bold text-gray-900 tracking-tight">ClinicConnect</span>
       </Link>
 
       {/* Anchor links: Home, Services, Features, Contact, About */}
@@ -361,7 +364,7 @@ const Navbar: React.FC = () => {
       </div>
 
       {/* Right side: Profile dropdown when logged in, else Log In / Sign Up */}
-      <div className="flex items-center space-x-8">
+      <div className="flex items-center space-x-3 sm:space-x-6 md:space-x-8">
         {user ? (
           <div className="relative" ref={dropdownRef}>
             <button
@@ -375,7 +378,7 @@ const Navbar: React.FC = () => {
               </span>
             </button>
             {profileOpen && (
-              <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white border border-gray-100 shadow-xl shadow-gray-100/50 py-4 overflow-hidden z-50">
+              <div className="absolute right-0 mt-2 w-[min(18rem,calc(100vw-1rem))] rounded-2xl bg-white border border-gray-100 shadow-xl shadow-gray-100/50 py-4 overflow-hidden z-50">
                 <div className="px-5 pb-3 border-b border-gray-100">
                   <p className="font-bold text-gray-900 truncate">{user.name || user.email}</p>
                   <p className="text-sm text-gray-500 truncate">{user.email}</p>
@@ -433,12 +436,12 @@ const Navbar: React.FC = () => {
           </div>
         ) : (
           <>
-            <Link to="/login" className="text-gray-500 hover:text-blue-700 font-semibold transition-colors text-sm uppercase tracking-wider">
+            <Link to="/login" className="text-gray-500 hover:text-blue-700 font-semibold transition-colors text-xs sm:text-sm uppercase tracking-wider whitespace-nowrap">
               Log In
             </Link>
             <Link
               to="/signup"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-7 py-2.5 rounded-full text-sm font-bold shadow-md shadow-blue-50 transition-all hover:shadow-lg active:scale-95"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-7 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold shadow-md shadow-blue-50 transition-all hover:shadow-lg active:scale-95 whitespace-nowrap"
             >
               Sign Up
             </Link>
@@ -537,8 +540,77 @@ const ScrollToTop = () => {
   return null;
 };
 
+const AdminSidebar: React.FC = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (user?.role !== 'Admin') return null;
+
+  const navItems = [
+    {
+      to: '/admin',
+      label: 'Dashboard',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+    },
+    {
+      to: '/admin/approvals',
+      label: 'Approvals',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    {
+      to: '/admin/patients',
+      label: 'Patients',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+    },
+    {
+      to: '/admin/clinic-admins',
+      label: 'Clinic Admins',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <aside className="w-56 shrink-0 bg-white border-r border-gray-100 py-6 px-3">
+      <p className="px-4 mb-3 text-xs font-bold text-gray-400 uppercase tracking-widest">Navigation</p>
+      <nav className="space-y-1">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.to;
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+};
+
 const hideNavbarPaths = ['/login', '/signup', '/clinic-register'];
-const adminPaths = ['/admin', '/clinic-admin', '/admin/approvals'];
+const adminPaths = ['/admin', '/clinic-admin', '/admin/approvals', '/admin/users', '/admin/patients', '/admin/clinic-admins'];
 
 const AppLayout: React.FC = () => {
   const location = useLocation();
@@ -546,15 +618,16 @@ const AppLayout: React.FC = () => {
   const { user } = useAuth();
   const isAuthPage = hideNavbarPaths.includes(location.pathname);
   const isAdminPage = adminPaths.includes(location.pathname);
-
-
+  const isAdminSidebarPage = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
 
   return (
     <>
       <ScrollToTop />
       <div className="min-h-screen flex flex-col bg-white text-gray-800 selection:bg-blue-50 selection:text-blue-900">
         {isAdminPage ? <AdminNavbar /> : isAuthPage ? <LogoBar /> : <Navbar />}
-        <main className="flex-grow">
+        <div className="flex flex-grow">
+          {isAdminSidebarPage && <AdminSidebar />}
+          <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/directory" element={<Directory />} />
@@ -568,9 +641,13 @@ const AppLayout: React.FC = () => {
             <Route path="/admin" element={<Admin />} />
             <Route path="/clinic-admin" element={<ClinicAdmin />} />
             <Route path="/admin/approvals" element={<AdminApproval />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/patients" element={<AdminUsers defaultFilter="Patient" />} />
+            <Route path="/admin/clinic-admins" element={<AdminUsers defaultFilter="Clinic Admin" />} />
             <Route path="/appointments" element={<Appointments />} />
           </Routes>
-        </main>
+          </main>
+        </div>
         <Footer />
       </div>
       {!isAuthPage && <Chatbot />}

@@ -131,6 +131,7 @@ const ClinicAdmin: React.FC = () => {
   const [editingDoctor, setEditingDoctor] = useState<LocalDoctor | null>(null);
   const [showSpecialtySuggestions, setShowSpecialtySuggestions] = useState(false);
   const [specialtySuggestions, setSpecialtySuggestions] = useState<string[]>([]);
+  const [highlightedSpecialtyIndex, setHighlightedSpecialtyIndex] = useState(-1);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [showDeleteClinicModal, setShowDeleteClinicModal] = useState(false);
@@ -156,6 +157,18 @@ const ClinicAdmin: React.FC = () => {
     return Object.entries(days).map(([k,v]) => ({ date: k, count: v }));
   }, [appointments]);
 
+  const allSpecialtyOptions = useMemo(() => {
+    const predefined = Object.values(specialtyMapping);
+    const existingDoctorSpecialties = doctors.map(d => d.specialty);
+    return Array.from(
+      new Set(
+        [...predefined, ...existingDoctorSpecialties]
+          .map(spec => spec?.trim())
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  }, [doctors]);
+
   // Doctor CRUD
   const openAddDoctor = () => { setEditingDoctor({ id: '', name: '', specialty: '', specialties: [], clinicId: '', experience: '', previouslyWorked: '', email: '', active: true }); setShowDoctorModal(true); };
   
@@ -163,16 +176,16 @@ const ClinicAdmin: React.FC = () => {
     setEditingDoctor(d => d && { ...d, specialty: value, specialties: [value] } as LocalDoctor);
     
     if (value.trim()) {
-      // Get all unique canonical specialties from the mapping
-      const allCanonicalSpecialties = Array.from(new Set(Object.values(specialtyMapping))).sort();
-      const filtered = allCanonicalSpecialties.filter(spec =>
+      const filtered = allSpecialtyOptions.filter(spec =>
         spec.toLowerCase().includes(value.toLowerCase())
       );
       setSpecialtySuggestions(filtered);
       setShowSpecialtySuggestions(filtered.length > 0);
+      setHighlightedSpecialtyIndex(filtered.length > 0 ? 0 : -1);
     } else {
       setShowSpecialtySuggestions(false);
       setSpecialtySuggestions([]);
+      setHighlightedSpecialtyIndex(-1);
     }
   };
   
@@ -180,6 +193,46 @@ const ClinicAdmin: React.FC = () => {
     setEditingDoctor(d => d && { ...d, specialty, specialties: [specialty] } as LocalDoctor);
     setShowSpecialtySuggestions(false);
     setSpecialtySuggestions([]);
+    setHighlightedSpecialtyIndex(-1);
+  };
+
+  const handleSpecialtyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSpecialtySuggestions || specialtySuggestions.length === 0) {
+      if (e.key === 'ArrowDown' && editingDoctor?.specialty?.trim()) {
+        const filtered = allSpecialtyOptions.filter(spec =>
+          spec.toLowerCase().includes(editingDoctor.specialty.toLowerCase())
+        );
+        setSpecialtySuggestions(filtered);
+        setShowSpecialtySuggestions(filtered.length > 0);
+        setHighlightedSpecialtyIndex(filtered.length > 0 ? 0 : -1);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedSpecialtyIndex(prev => (prev + 1) % specialtySuggestions.length);
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedSpecialtyIndex(prev => (prev <= 0 ? specialtySuggestions.length - 1 : prev - 1));
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const indexToUse = highlightedSpecialtyIndex >= 0 ? highlightedSpecialtyIndex : 0;
+      handleSelectSpecialty(specialtySuggestions[indexToUse]);
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setShowSpecialtySuggestions(false);
+      setHighlightedSpecialtyIndex(-1);
+    }
   };
 
   const handleEditDoctor = (d: LocalDoctor) => { setEditingDoctor(d); setShowDoctorModal(true); };
@@ -213,7 +266,7 @@ const ClinicAdmin: React.FC = () => {
       const clinicIdToMatch = clinicId?.toString?.() || clinicId;
       
       // Filter doctors by clinic and map them
-      setDoctors(dres
+      const mappedDoctors = dres
         .filter((x: any) => {
           const docClinicId = x.clinicId?.toString?.() || x.clinicId;
           return docClinicId === clinicIdToMatch;
@@ -232,7 +285,29 @@ const ClinicAdmin: React.FC = () => {
           workingDays: x.workingDays || '', 
           workingHours: x.workingHours || '', 
           active: x.active ?? true 
-        })));
+        }));
+      
+      // If we just created a doctor, ensure it's in the list (handles custom specialties appearing in dropdown)
+      const savedDoctorId = d.id;
+      if (savedDoctorId && !d.id?.startsWith?.('new') && !mappedDoctors.some(doc => doc.id === savedDoctorId)) {
+        mappedDoctors.push({
+          id: savedDoctorId,
+          name: d.name || '',
+          specialty: d.specialty || '',
+          specialties: [d.specialty || ''],
+          clinicId: clinicIdToUse,
+          experience: d.experience || '',
+          previouslyWorked: d.previouslyWorked || '',
+          email: d.email || '',
+          image: (d as any).image,
+          clinicName: clinicProfile?.name || '',
+          workingDays: (d as any).workingDays || '',
+          workingHours: (d as any).workingHours || '',
+          active: d.active
+        });
+      }
+      
+      setDoctors(mappedDoctors);
       setShowDoctorModal(false);
     } catch (err) {
       console.error(err);
@@ -830,17 +905,21 @@ const ClinicAdmin: React.FC = () => {
                   <input 
                     value={editingDoctor.specialty} 
                     onChange={e => handleSpecialtyInput(e.target.value)}
+                    onKeyDown={handleSpecialtyKeyDown}
                     onFocus={() => {
                       if (editingDoctor.specialty.trim()) {
-                        const allCanonicalSpecialties = Array.from(new Set(Object.values(specialtyMapping))).sort();
-                        const filtered = allCanonicalSpecialties.filter(spec =>
+                        const filtered = allSpecialtyOptions.filter(spec =>
                           spec.toLowerCase().includes(editingDoctor.specialty.toLowerCase())
                         );
                         setSpecialtySuggestions(filtered);
                         setShowSpecialtySuggestions(filtered.length > 0);
+                        setHighlightedSpecialtyIndex(filtered.length > 0 ? 0 : -1);
                       }
                     }}
-                    onBlur={() => setTimeout(() => setShowSpecialtySuggestions(false), 150)}
+                    onBlur={() => setTimeout(() => {
+                      setShowSpecialtySuggestions(false);
+                      setHighlightedSpecialtyIndex(-1);
+                    }, 150)}
                     placeholder="e.g., Cardiology, Pediatrics" 
                     className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
                   />
@@ -849,8 +928,12 @@ const ClinicAdmin: React.FC = () => {
                       {specialtySuggestions.map((specialty, idx) => (
                         <div
                           key={idx}
-                          onClick={() => handleSelectSpecialty(specialty)}
-                          className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-gray-700 text-sm border-b last:border-b-0"
+                          onMouseEnter={() => setHighlightedSpecialtyIndex(idx)}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectSpecialty(specialty);
+                          }}
+                          className={`px-3 py-2 cursor-pointer text-gray-700 text-sm border-b last:border-b-0 ${idx === highlightedSpecialtyIndex ? 'bg-blue-50' : 'hover:bg-blue-50'}`}
                         >
                           {specialty}
                         </div>

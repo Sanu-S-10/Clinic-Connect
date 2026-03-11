@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { registerClinic } from '../services/api';
+import { registerClinic, getClinics } from '../services/api';
 
 const ClinicRegister: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +31,138 @@ const ClinicRegister: React.FC = () => {
   const emailLocked = Boolean(initialEmail);
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [allLocationSuggestions, setAllLocationSuggestions] = useState<string[]>([]);
+  const [filteredLocationSuggestions, setFilteredLocationSuggestions] = useState<string[]>([]);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [highlightedLocationIndex, setHighlightedLocationIndex] = useState(-1);
+
+  // Load existing clinic locations on mount
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const clinics = await getClinics();
+        const locations = Array.from(
+          new Set(
+            clinics
+              .map(c => c.location)
+              .filter((loc): loc is string => Boolean(loc && loc.trim()))
+              .map(loc => loc.trim())
+          )
+        ).sort((a, b) => a.localeCompare(b));
+        setAllLocationSuggestions(locations);
+      } catch (err) {
+        console.error('Failed to load clinic locations:', err);
+      }
+    };
+    loadLocations();
+  }, []);
+
+  const handleLocationInput = (value: string) => {
+    setFormData(prev => ({ ...prev, location: value }));
+    if (validationErrors.location) {
+      setValidationErrors(prev => ({ ...prev, location: '' }));
+    }
+    
+    if (value.trim()) {
+      const filtered = allLocationSuggestions.filter(loc =>
+        loc.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredLocationSuggestions(filtered);
+      setShowLocationSuggestions(filtered.length > 0);
+      setHighlightedLocationIndex(filtered.length > 0 ? 0 : -1);
+    } else {
+      setShowLocationSuggestions(false);
+      setFilteredLocationSuggestions([]);
+      setHighlightedLocationIndex(-1);
+    }
+  };
+
+  const handleSelectLocation = (location: string) => {
+    setFormData(prev => ({ ...prev, location }));
+    setShowLocationSuggestions(false);
+    setFilteredLocationSuggestions([]);
+    setHighlightedLocationIndex(-1);
+  };
+
+  const handleLocationFocus = async () => {
+    // Refresh locations from database when user focuses on the field
+    try {
+      const clinics = await getClinics();
+      const locations = Array.from(
+        new Set(
+          clinics
+            .map(c => c.location)
+            .filter((loc): loc is string => Boolean(loc && loc.trim()))
+            .map(loc => loc.trim())
+        )
+      ).sort((a, b) => a.localeCompare(b));
+      setAllLocationSuggestions(locations);
+      
+      // If there's text in the field, filter and show suggestions
+      if (formData.location.trim()) {
+        const filtered = locations.filter(loc =>
+          loc.toLowerCase().includes(formData.location.toLowerCase())
+        );
+        if (filtered.length > 0) {
+          setFilteredLocationSuggestions(filtered);
+          setShowLocationSuggestions(true);
+          setHighlightedLocationIndex(0);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to refresh clinic locations:', err);
+    }
+  };
+
+  const handleLocationKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Handle ArrowDown when dropdown is closed to open it
+    if (!showLocationSuggestions || filteredLocationSuggestions.length === 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        // If field is empty, show all locations; otherwise filter by current text
+        const textToFilter = formData.location.trim();
+        const filtered = textToFilter
+          ? allLocationSuggestions.filter(loc =>
+              loc.toLowerCase().includes(textToFilter.toLowerCase())
+            )
+          : allLocationSuggestions;
+        
+        if (filtered.length > 0) {
+          setFilteredLocationSuggestions(filtered);
+          setShowLocationSuggestions(true);
+          setHighlightedLocationIndex(0);
+        }
+      }
+      return;
+    }
+
+    // Handle navigation and selection when dropdown is open
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedLocationIndex(prev => (prev + 1) % filteredLocationSuggestions.length);
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedLocationIndex(prev => (prev <= 0 ? filteredLocationSuggestions.length - 1 : prev - 1));
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const indexToUse = highlightedLocationIndex >= 0 ? highlightedLocationIndex : 0;
+      handleSelectLocation(filteredLocationSuggestions[indexToUse]);
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setShowLocationSuggestions(false);
+      setFilteredLocationSuggestions([]);
+      setHighlightedLocationIndex(-1);
+    }
+  };
 
   const specialtyOptions = [
     'General Medicine',
@@ -289,19 +421,46 @@ const ClinicRegister: React.FC = () => {
                     <label htmlFor="location" className="block text-sm font-semibold text-gray-700 mb-2">
                       Location / District <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      id="location"
-                      type="text"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleChange}
-                      placeholder="e.g., Downtown, District 5"
-                      className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors ${
-                        validationErrors.location
-                          ? 'border-red-300 bg-red-50 focus:border-red-500'
-                          : 'border-gray-200 focus:border-blue-500'
-                      }`}
-                    />
+                    <div className="relative">
+                      <input
+                        id="location"
+                        type="text"
+                        value={formData.location}
+                        onChange={(e) => handleLocationInput(e.target.value)}
+                        onKeyDown={handleLocationKeyDown}
+                        onFocus={handleLocationFocus}
+                        onBlur={() => setTimeout(() => {
+                          setShowLocationSuggestions(false);
+                          setFilteredLocationSuggestions([]);
+                          setHighlightedLocationIndex(-1);
+                        }, 150)}
+                        placeholder="e.g., Downtown, District 5"
+                        className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors ${
+                          validationErrors.location
+                            ? 'border-red-300 bg-red-50 focus:border-red-500'
+                            : 'border-gray-200 focus:border-blue-500'
+                        }`}
+                      />
+                      {showLocationSuggestions && filteredLocationSuggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 border-t-0 rounded-b shadow-lg z-50">
+                          {filteredLocationSuggestions.map((location, idx) => (
+                            <div
+                              key={idx}
+                              onMouseEnter={() => setHighlightedLocationIndex(idx)}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectLocation(location);
+                              }}
+                              className={`px-4 py-2 cursor-pointer text-gray-700 text-sm border-b last:border-b-0 ${
+                                idx === highlightedLocationIndex ? 'bg-blue-50' : 'hover:bg-blue-50'
+                              }`}
+                            >
+                              {location}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {validationErrors.location && <p className="text-red-600 text-sm mt-1">{validationErrors.location}</p>}
                   </div>
                 </div>

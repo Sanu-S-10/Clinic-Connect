@@ -710,6 +710,7 @@ app.post('/api/users/login', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { email, password } = req.body;
+    const websiteEmail = process.env.WEBSITE_EMAIL || process.env.FROM_EMAIL || 'support@clinicconnect.com';
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
@@ -739,8 +740,21 @@ app.post('/api/users/login', async (req: Request, res: Response) => {
           }
         });
       }
+
+      const deletedUser = await db.collection('deletedUsers').findOne({ email: email.toLowerCase() });
+      if (deletedUser) {
+        return res.status(403).json({
+          error: `Your account has been deleted. Contact website email: ${websiteEmail}`
+        });
+      }
       
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({
+        error: `Your access is revoked. Contact website email: ${websiteEmail}`
+      });
     }
 
     // For existing users, do password comparison
@@ -784,6 +798,135 @@ app.post('/api/users/login', async (req: Request, res: Response) => {
       error: 'Login failed',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+});
+
+// Get all users with safe fields (Admin view)
+app.get('/api/users', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+
+    const users = await db
+      .collection('users')
+      .find({}, { projection: { password: 0, passwordHash: 0 } })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    const admins = await db
+      .collection('admins')
+      .find({}, { projection: { password: 0, passwordHash: 0 } })
+      .toArray();
+
+    const clinicRegistrations = await db
+      .collection('clinicRegistrations')
+      .find({}, { projection: { email: 1, status: 1 } })
+      .toArray();
+
+    const clinicStatusByEmail: Record<string, string> = {};
+    for (const reg of clinicRegistrations) {
+      if (reg.email) clinicStatusByEmail[reg.email.toLowerCase()] = reg.status;
+    }
+
+    const formattedUsers = users.map((user: any) => {
+      const base = { id: user._id?.toString?.() || user._id, ...user };
+      if (user.role === 'Clinic Admin' && user.email) {
+        base.clinicStatus = clinicStatusByEmail[user.email.toLowerCase()] || null;
+      }
+      return base;
+    });
+
+    const formattedAdmins = admins.map((admin: any) => ({
+      id: admin._id?.toString?.() || admin._id,
+      name: admin.fullName || admin.name || 'Admin',
+      email: admin.email,
+      phone: admin.phone || '',
+      role: 'Admin',
+      createdAt: admin.createdAt || null,
+      updatedAt: admin.updatedAt || null
+    }));
+
+    const allUsers = [...formattedUsers, ...formattedAdmins].sort((a: any, b: any) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+
+    res.json(allUsers);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to fetch users',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Delete a user (Admin only)
+app.delete('/api/users/:userId', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const { ObjectId } = await import('mongodb');
+    const { userId } = req.params;
+    if (!ObjectId.isValid(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+
+    const existingUser = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!existingUser) return res.status(404).json({ error: 'User not found' });
+
+    if (existingUser.email) {
+      await db.collection('deletedUsers').updateOne(
+        { email: String(existingUser.email).toLowerCase() },
+        {
+          $set: {
+            email: String(existingUser.email).toLowerCase(),
+            deletedAt: new Date(),
+            deletedUserId: existingUser._id,
+            role: existingUser.role || null,
+          },
+        },
+        { upsert: true }
+      );
+    }
+
+    const result = await db.collection('users').deleteOne({ _id: new ObjectId(userId) });
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete user', message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
+// Revoke user access (set isActive=false)
+app.put('/api/users/:userId/revoke', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const { ObjectId } = await import('mongodb');
+    const { userId } = req.params;
+    if (!ObjectId.isValid(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+    const result = await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { isActive: false, updatedAt: new Date() } }
+    );
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'Access revoked successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to revoke access', message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
+// Grant user access (set isActive=true)
+app.put('/api/users/:userId/grant', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const { ObjectId } = await import('mongodb');
+    const { userId } = req.params;
+    if (!ObjectId.isValid(userId)) return res.status(400).json({ error: 'Invalid user ID' });
+    const result = await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { isActive: true, updatedAt: new Date() } }
+    );
+    if (result.matchedCount === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'Access granted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to grant access', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
@@ -1099,6 +1242,30 @@ app.get('/api/clinics/registrations/approved', async (req: Request, res: Respons
   } catch (error) {
     res.status(500).json({
       error: 'Failed to fetch approved clinics',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get all rejected clinic registrations (Admin only)
+app.get('/api/clinics/registrations/rejected', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const rejectedClinics = await db
+      .collection('clinicRegistrations')
+      .find({ status: 'rejected' })
+      .sort({ updatedAt: -1 })
+      .toArray();
+
+    const formatted = rejectedClinics.map(clinic => ({
+      id: clinic._id.toString(),
+      ...clinic
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to fetch rejected clinics',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

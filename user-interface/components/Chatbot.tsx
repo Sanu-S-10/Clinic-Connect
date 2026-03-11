@@ -109,7 +109,7 @@ const Chatbot: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-50">
       {/* Chat Button */}
       {!isOpen && (
         <button
@@ -125,7 +125,7 @@ const Chatbot: React.FC = () => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="w-96 h-screen md:h-[600px] bg-white rounded-lg shadow-2xl flex flex-col border border-gray-200">
+        <div className="w-[min(24rem,calc(100vw-1.5rem))] h-[min(80vh,37.5rem)] bg-white rounded-lg shadow-2xl flex flex-col border border-gray-200">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg flex justify-between items-center">
             <div>
@@ -150,7 +150,7 @@ const Chatbot: React.FC = () => {
                 className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-xs px-4 py-2 rounded-lg ${
+                  className={`max-w-[80%] px-4 py-2 rounded-lg break-words ${
                     message.sender === 'user'
                       ? 'bg-blue-600 text-white rounded-br-none'
                       : 'bg-gray-200 text-gray-900 rounded-bl-none'

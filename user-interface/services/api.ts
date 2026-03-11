@@ -65,6 +65,14 @@ export interface User {
   role: string;
 }
 
+export interface UserDetails extends User {
+  clinicId?: string;
+  clinicStatus?: string;
+  isActive?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface ClinicRegistration {
   id?: string;
   _id?: string;
@@ -289,6 +297,29 @@ export const changePassword = async (userId: string, currentPassword: string, ne
   return response.json();
 };
 
+// Get all users (Admin view)
+export const getAllUsers = async (): Promise<UserDetails[]> => {
+  const response = await fetch(`${API_BASE_URL}/users`);
+  if (!response.ok) throw new Error('Failed to fetch users');
+  const data = await response.json();
+  return (Array.isArray(data) ? data : []).map((u: any) => ({ ...u, id: u.id ?? u._id?.toString?.() }));
+};
+
+export const deleteUser = async (userId: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error('Failed to delete user');
+};
+
+export const revokeUserAccess = async (userId: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/revoke`, { method: 'PUT' });
+  if (!response.ok) throw new Error('Failed to revoke access');
+};
+
+export const grantUserAccess = async (userId: string): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/grant`, { method: 'PUT' });
+  if (!response.ok) throw new Error('Failed to grant access');
+};
+
 // Clinic Registration
 export const registerClinic = async (clinic: Omit<ClinicRegistration, 'id' | '_id' | 'status' | 'createdAt' | 'approvedAt'> & { password: string; confirmPassword: string }): Promise<{ message: string; id: string }> => {
   const response = await fetch(`${API_BASE_URL}/clinics/register`, {
@@ -315,6 +346,14 @@ export const getPendingClinics = async (): Promise<ClinicRegistration[]> => {
 export const getApprovedClinics = async (): Promise<ClinicRegistration[]> => {
   const response = await fetch(`${API_BASE_URL}/clinics/registrations/approved`);
   if (!response.ok) throw new Error('Failed to fetch approved clinics');
+  const data = await response.json();
+  return (Array.isArray(data) ? data : []).map((c: any) => ({ ...c, id: c.id ?? c._id?.toString?.() }));
+};
+
+// Get Rejected Clinic Registrations
+export const getRejectedClinics = async (): Promise<ClinicRegistration[]> => {
+  const response = await fetch(`${API_BASE_URL}/clinics/registrations/rejected`);
+  if (!response.ok) throw new Error('Failed to fetch rejected clinics');
   const data = await response.json();
   return (Array.isArray(data) ? data : []).map((c: any) => ({ ...c, id: c.id ?? c._id?.toString?.() }));
 };

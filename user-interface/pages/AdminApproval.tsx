@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AlertModal, { AlertState } from '../components/AlertModal';
-import { getPendingClinics, getApprovedClinics, approveClinicRegistration, rejectClinicRegistration, revokeClinicApproval, deleteClinic, ClinicRegistration } from '../services/api';
+import { getPendingClinics, getApprovedClinics, getRejectedClinics, approveClinicRegistration, rejectClinicRegistration, revokeClinicApproval, deleteClinic, ClinicRegistration } from '../services/api';
 
 const AdminApproval: React.FC = () => {
   const { user, logout } = useAuth();
@@ -17,6 +17,7 @@ const AdminApproval: React.FC = () => {
 
   const [pendingClinics, setPendingClinics] = useState<ClinicRegistration[]>([]);
   const [approvedClinics, setApprovedClinics] = useState<ClinicRegistration[]>([]);
+  const [rejectedClinics, setRejectedClinics] = useState<ClinicRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedClinic, setSelectedClinic] = useState<ClinicRegistration | null>(null);
@@ -28,7 +29,7 @@ const AdminApproval: React.FC = () => {
   const [revokeReason, setRevokeReason] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [tab, setTab] = useState<'pending' | 'approved'>('pending');
+  const [tab, setTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [alert, setAlert] = useState<AlertState>({ isOpen: false, title: '', message: '', type: 'info' });
 
   // Load pending clinics
@@ -44,13 +45,15 @@ const AdminApproval: React.FC = () => {
       setLoading(true);
       setError('');
       console.log('[AdminApproval] Loading clinics...'); // Debug
-      const [pending, approved] = await Promise.all([
+      const [pending, approved, rejected] = await Promise.all([
         getPendingClinics(),
-        getApprovedClinics()
+        getApprovedClinics(),
+        getRejectedClinics()
       ]);
-      console.log('[AdminApproval] Pending clinics:', pending, 'Approved clinics:', approved); // Debug
+      console.log('[AdminApproval] Pending clinics:', pending, 'Approved clinics:', approved, 'Rejected clinics:', rejected); // Debug
       setPendingClinics(pending);
       setApprovedClinics(approved);
+      setRejectedClinics(rejected);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to load clinics';
       console.error('[AdminApproval] Error loading clinics:', errorMsg); // Debug
@@ -81,6 +84,15 @@ const AdminApproval: React.FC = () => {
       setActionLoading(true);
       await rejectClinicRegistration(selectedClinic.id || '', rejectReason);
       setPendingClinics(prev => prev.filter(c => c.id !== selectedClinic.id));
+      setRejectedClinics(prev => [
+        {
+          ...selectedClinic,
+          status: 'rejected',
+          rejectionReason: rejectReason || 'No reason provided',
+          updatedAt: new Date()
+        },
+        ...prev
+      ]);
       setShowRejectModal(false);
       setShowDetailModal(false);
       setSelectedClinic(null);
@@ -99,6 +111,15 @@ const AdminApproval: React.FC = () => {
       setActionLoading(true);
       await revokeClinicApproval(selectedClinic.id || '', revokeReason);
       setApprovedClinics(prev => prev.filter(c => c.id !== selectedClinic.id));
+      setPendingClinics(prev => [
+        {
+          ...selectedClinic,
+          status: 'pending',
+          approvedAt: undefined,
+          updatedAt: new Date()
+        },
+        ...prev
+      ]);
       setShowRevokeModal(false);
       setShowDetailModal(false);
       setSelectedClinic(null);
@@ -118,6 +139,7 @@ const AdminApproval: React.FC = () => {
       await deleteClinic(selectedClinic.id || '', deleteReason);
       setPendingClinics(prev => prev.filter(c => c.id !== selectedClinic.id));
       setApprovedClinics(prev => prev.filter(c => c.id !== selectedClinic.id));
+      setRejectedClinics(prev => prev.filter(c => c.id !== selectedClinic.id));
       setShowDeleteModal(false);
       setShowDetailModal(false);
       setSelectedClinic(null);
@@ -129,7 +151,19 @@ const AdminApproval: React.FC = () => {
     }
   };
 
-  const filteredClinics = tab === 'pending' ? pendingClinics : approvedClinics;
+  const filteredClinics =
+    tab === 'pending'
+      ? pendingClinics
+      : tab === 'approved'
+      ? approvedClinics
+      : rejectedClinics;
+
+  const emptyStateMessage =
+    tab === 'pending'
+      ? 'No pending clinic registrations at this time'
+      : tab === 'approved'
+      ? 'No approved clinics at this time'
+      : 'No rejected clinics at this time';
 
   if (!user) return null;
 
@@ -140,7 +174,7 @@ const AdminApproval: React.FC = () => {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Clinic Registration Approvals</h1>
           <p className="text-gray-600">Review and manage pending clinic registration requests</p>
-          {user && <p className="text-sm text-gray-500 mt-2">Logged in as: {user.name} ({user.role})</p>}
+
         </div>
 
         {/* Stats */}
@@ -154,10 +188,12 @@ const AdminApproval: React.FC = () => {
             <p className="text-3xl font-bold text-green-600">{approvedClinics.length}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
-            <p className="text-sm text-gray-600 mb-1">Last Updated</p>
-            <p className="text-sm text-gray-900 font-semibold">{new Date().toLocaleDateString()}</p>
+            <p className="text-sm text-gray-600 mb-1">Rejected Clinics</p>
+            <p className="text-3xl font-bold text-red-600">{rejectedClinics.length}</p>
           </div>
         </div>
+
+        <p className="text-sm text-gray-500 mb-6">Last Updated: {new Date().toLocaleDateString()}</p>
 
         {/* Error Message */}
         {error && (
@@ -193,6 +229,16 @@ const AdminApproval: React.FC = () => {
           >
             Approved ({approvedClinics.length})
           </button>
+          <button
+            onClick={() => setTab('rejected')}
+            className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+              tab === 'rejected'
+                ? 'bg-red-600 text-white'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Rejected ({rejectedClinics.length})
+          </button>
         </div>
 
         {/* Loading State */}
@@ -208,7 +254,7 @@ const AdminApproval: React.FC = () => {
             <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p className="text-gray-600">No pending clinic registrations at this time</p>
+            <p className="text-gray-600">{emptyStateMessage}</p>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -422,7 +468,7 @@ const AdminApproval: React.FC = () => {
                     {actionLoading ? 'Processing...' : 'Approve'}
                   </button>
                 </>
-              ) : (
+              ) : tab === 'approved' ? (
                 <>
                   <button
                     onClick={() => setShowDeleteModal(true)}
@@ -439,6 +485,14 @@ const AdminApproval: React.FC = () => {
                     Revoke Approval
                   </button>
                 </>
+              ) : (
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  disabled={actionLoading}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold disabled:opacity-50"
+                >
+                  Delete Clinic
+                </button>
               )}
             </div>
           </div>
