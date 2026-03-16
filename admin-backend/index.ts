@@ -243,6 +243,110 @@ app.post('/api/clinics/:id/reviews', async (req: Request, res: Response) => {
   }
 });
 
+
+// Edit a clinic review
+app.put('/api/clinics/:clinicId/reviews/:reviewId', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const { clinicId, reviewId } = req.params as { clinicId: string, reviewId: string };
+    const { rating, comment, userId } = req.body;
+
+    if (!ObjectId.isValid(clinicId) || !ObjectId.isValid(reviewId)) {
+      return res.status(400).json({ error: 'Invalid clinic or review ID' });
+    }
+
+    // Only allow user to edit their own review
+    const review = await db.collection('clinicReviews').findOne({ _id: new ObjectId(reviewId) });
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    if (String(review.userId) !== String(userId)) {
+      return res.status(403).json({ error: 'You can only edit your own review' });
+    }
+
+    const updateFields: any = { updatedAt: new Date() };
+    if (typeof rating === 'number') updateFields.rating = rating;
+    if (typeof comment === 'string') updateFields.comment = comment;
+
+    await db.collection('clinicReviews').updateOne(
+      { _id: new ObjectId(reviewId) },
+      { $set: updateFields }
+    );
+
+    // Recalculate average rating
+    const clinicObjId = new ObjectId(clinicId);
+    const allReviews = await db.collection('clinicReviews').find({ clinicId: clinicObjId }).toArray();
+    const reviewCount = allReviews.length;
+    const avgRating = reviewCount > 0 
+      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount 
+      : 0;
+    const roundedRating = Math.round(avgRating * 2) / 2;
+    await db.collection('clinics').updateOne(
+      { _id: clinicObjId },
+      { $set: { rating: roundedRating, reviewCount } }
+    );
+    await db.collection('clinicRegistrations').updateOne(
+      { _id: clinicObjId },
+      { $set: { rating: roundedRating, reviewCount } }
+    );
+
+    res.json({ message: 'Review updated successfully', rating: roundedRating, reviewCount });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to update review',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Delete a clinic review
+app.delete('/api/clinics/:clinicId/reviews/:reviewId', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const { clinicId, reviewId } = req.params as { clinicId: string, reviewId: string };
+    const { userId } = req.body;
+
+    if (!ObjectId.isValid(clinicId) || !ObjectId.isValid(reviewId)) {
+      return res.status(400).json({ error: 'Invalid clinic or review ID' });
+    }
+
+    // Only allow user to delete their own review
+    const review = await db.collection('clinicReviews').findOne({ _id: new ObjectId(reviewId) });
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    if (String(review.userId) !== String(userId)) {
+      return res.status(403).json({ error: 'You can only delete your own review' });
+    }
+
+    await db.collection('clinicReviews').deleteOne({ _id: new ObjectId(reviewId) });
+
+    // Recalculate average rating
+    const clinicObjId = new ObjectId(clinicId);
+    const allReviews = await db.collection('clinicReviews').find({ clinicId: clinicObjId }).toArray();
+    const reviewCount = allReviews.length;
+    const avgRating = reviewCount > 0 
+      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount 
+      : 0;
+    const roundedRating = Math.round(avgRating * 2) / 2;
+    await db.collection('clinics').updateOne(
+      { _id: clinicObjId },
+      { $set: { rating: roundedRating, reviewCount } }
+    );
+    await db.collection('clinicRegistrations').updateOne(
+      { _id: clinicObjId },
+      { $set: { rating: roundedRating, reviewCount } }
+    );
+
+    res.json({ message: 'Review deleted successfully', rating: roundedRating, reviewCount });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to delete review',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Update clinic details (clinic admin dashboard) - updates both clinics and clinicRegistrations
 app.put('/api/clinics/:id', async (req: Request, res: Response) => {
   try {
@@ -524,30 +628,22 @@ app.post('/api/bookings', async (req: Request, res: Response) => {
       });
     }
 
-    // Check for scheduling conflicts
-    const existingAppointment = await db.collection('bookings').findOne({
+    // Check for scheduling conflicts and slot limit
+    const slotBookings = await db.collection('bookings').find({
       doctorId,
       appointmentDate,
       appointmentTime,
       status: { $nin: ['Cancelled', 'Rejected'] }
-    });
+    }).toArray();
 
-    if (existingAppointment) {
-      return res.status(400).json({ 
-        error: 'Time slot already booked for this doctor' 
+    if (slotBookings.length >= 10) {
+      return res.status(400).json({
+        error: 'This time slot is fully booked (max 10 patients). Please choose another slot.'
       });
     }
 
-    // Generate token number that resets daily (1, 2, 3, etc per day)
-    // Count bookings for this specific appointment date (not cancelled)
-    const bookingsForDate = await db.collection('bookings')
-      .find({
-        appointmentDate: appointmentDate,
-        status: { $ne: 'Cancelled' }
-      })
-      .toArray();
-    
-    const tokenNumber = String(bookingsForDate.length + 1);
+    // Generate token number for this slot
+    const tokenNumber = String(slotBookings.length + 1);
 
     const result = await db.collection('bookings').insertOne({
       clinicId,

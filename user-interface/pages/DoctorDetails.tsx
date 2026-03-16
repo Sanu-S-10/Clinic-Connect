@@ -134,12 +134,22 @@ const DoctorDetails: React.FC = () => {
             
             <div>
               {user ? (
-                <Link 
-                  to={`/book/${doctor.id}`}
-                  className="block w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-center font-bold shadow-lg shadow-blue-100 transition-all hover:scale-[1.02] active:scale-[0.98] text-sm"
-                >
-                  Book Appointment
-                </Link>
+                doctor?.active ? (
+                  <Link 
+                    to={`/book/${doctor.id}`}
+                    className="block w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-center font-bold shadow-lg shadow-blue-100 transition-all hover:scale-[1.02] active:scale-[0.98] text-sm"
+                  >
+                    Book Appointment
+                  </Link>
+                ) : (
+                  <button
+                    className="block w-full bg-gray-400 text-white py-3 rounded-xl text-center font-bold shadow-lg shadow-gray-100 transition-all text-sm cursor-not-allowed"
+                    disabled
+                    title="Doctor is not available for booking"
+                  >
+                    Not Available for Booking
+                  </button>
+                )
               ) : (
                 <Link 
                   to="/login"

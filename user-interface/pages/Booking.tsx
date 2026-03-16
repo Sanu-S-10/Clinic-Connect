@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
 import { createBooking, getDoctors, getClinics } from '../services/api';
@@ -296,7 +295,14 @@ const Booking: React.FC = () => {
     }
   };
 
+  const timeSlots = getTimeSlots();
+
   if (isSubmitted) {
+    // Find session index for the selected slot
+    const sessionIndex = timeSlots.findIndex(slot => slot.label === formData.slot);
+    const sessionNumber = sessionIndex >= 0 ? sessionIndex + 1 : null;
+    const sessionLabel = sessionNumber ? `${sessionNumber}${sessionNumber === 1 ? 'st' : sessionNumber === 2 ? 'nd' : sessionNumber === 3 ? 'rd' : 'th'} Session` : '';
+
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-4 animate-in zoom-in-95 duration-500">
         <div className="frosted-glass p-6 rounded-2xl shadow-sm max-w-xl w-full">
@@ -331,10 +337,17 @@ const Booking: React.FC = () => {
             </div>
 
             {/* Doctor Details */}
-            <div className="mb-3 pb-3 border-b border-gray-100">
-              <p className="text-xs font-bold text-gray-400 uppercase mb-1">Doctor</p>
-              <p className="text-lg font-bold text-gray-900">{doctor.name}</p>
-              <p className="text-sm text-gray-600">{doctor.specialty}</p>
+            <div className="mb-3 pb-3 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase mb-1">Doctor</p>
+                <p className="text-lg font-bold text-gray-900">{doctor.name}</p>
+                <p className="text-sm text-gray-600">{doctor.specialty}</p>
+              </div>
+              {sessionLabel && (
+                <span className="text-xs font-semibold text-blue-700 ml-4 whitespace-nowrap bg-blue-50 rounded-full px-4 py-2 shadow-sm border border-blue-100">
+                  {sessionLabel}
+                </span>
+              )}
             </div>
 
             {/* Clinic Details */}
@@ -408,11 +421,9 @@ const Booking: React.FC = () => {
     );
   }
 
-  const timeSlots = getTimeSlots();
-
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12 animate-in fade-in duration-500">
-      <div className="mb-8">
+    <div className="max-w-3xl mx-auto px-6 pt-4 animate-in fade-in duration-500">
+      <div className="flex items-center mb-4" style={{marginLeft: '-16px'}}>
         <Link to={`/doctor/${doctor.id}`} className="inline-flex items-center text-gray-500 hover:text-blue-700 transition-colors">
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -420,8 +431,7 @@ const Booking: React.FC = () => {
           Back
         </Link>
       </div>
-
-      <div className="frosted-glass p-8 md:p-12 rounded-[2.5rem] shadow-sm">
+      <div className="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-3xl shadow-xl border border-gray-200 mt-2">
         <div className="mb-10 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Book Appointment</h1>
           <p className="text-gray-500">Scheduling with <span className="text-blue-600 font-semibold">{doctor.name}</span></p>
@@ -440,7 +450,7 @@ const Booking: React.FC = () => {
                 placeholder="Full Name"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full px-5 py-4 rounded-2xl bg-white border border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all"
+                className="w-full px-5 py-4 rounded-2xl bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-600 transition-all"
               />
             </div>
             <div>
@@ -451,7 +461,7 @@ const Booking: React.FC = () => {
                 placeholder="Age"
                 value={formData.age}
                 onChange={(e) => setFormData({...formData, age: e.target.value})}
-                className="w-full px-5 py-4 rounded-2xl bg-white border border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all"
+                className="w-full px-5 py-4 rounded-2xl bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-600 transition-all"
               />
             </div>
           </div>
@@ -464,7 +474,7 @@ const Booking: React.FC = () => {
               placeholder="+91 XXXXX XXXXX"
               value={formData.phone}
               onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              className="w-full px-5 py-4 rounded-2xl bg-white border border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all"
+              className="w-full px-5 py-4 rounded-2xl bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-600 transition-all"
             />
           </div>
 
@@ -477,7 +487,7 @@ const Booking: React.FC = () => {
                 min={new Date().toISOString().split('T')[0]}
                 value={formData.date}
                 onChange={(e) => handleDateChange(e.target.value)}
-                className={`w-full px-5 py-4 rounded-2xl bg-white border-2 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer ${dateError ? 'border-red-300' : 'border-gray-100'}`}
+                className={`w-full px-5 py-4 rounded-2xl bg-white border-2 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer ${dateError ? 'border-red-300' : 'border-gray-300'}`}
               />
               {dateError && <p className="text-red-500 text-xs mt-2">{dateError}</p>}
             </div>
@@ -487,7 +497,7 @@ const Booking: React.FC = () => {
                 required
                 value={formData.slot}
                 onChange={(e) => setFormData({...formData, slot: e.target.value})}
-                className="w-full px-5 py-4 rounded-2xl bg-white border border-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all cursor-pointer appearance-none"
+                className="w-full px-5 py-4 rounded-2xl bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-600 transition-all cursor-pointer appearance-none"
               >
                 <option value="">Select a slot</option>
                 {timeSlots.map(slot => (

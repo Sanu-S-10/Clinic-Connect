@@ -18,9 +18,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      // Clear localStorage on app load to start fresh
-      localStorage.removeItem(STORAGE_KEY);
-      setUser(null);
+      // Load user from localStorage if present
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        setUser(JSON.parse(stored));
+      }
     } catch (error) {
       console.error('Error initializing auth:', error);
     }

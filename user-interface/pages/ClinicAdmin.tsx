@@ -373,7 +373,9 @@ const ClinicAdmin: React.FC = () => {
     try {
       const doc = doctors.find(d => d.id === id);
       if (!doc) return;
-      setDoctors(prev => prev.map(d => d.id === id ? { ...d, active: !d.active } : d));
+      const updated = { ...doc, active: !doc.active };
+      await updateDoctor(id, updated);
+      setDoctors(prev => prev.map(d => d.id === id ? updated : d));
     } catch (err) {
       console.error(err);
       setAlert({ isOpen: true, title: 'Error', message: 'Failed to toggle doctor status', type: 'error' });
@@ -626,7 +628,9 @@ const ClinicAdmin: React.FC = () => {
                             {d.clinicId !== (clinicProfile?._id || clinicProfile?.id) && (
                               <button onClick={() => handleFixDoctorClinicId(d.id)} className="text-sm px-3 py-1 bg-yellow-100 text-yellow-700 rounded font-medium">Fix</button>
                             )}
-                            <button onClick={() => toggleDoctorActive(d.id)} className="text-sm px-3 py-1 bg-gray-100 rounded">Toggle</button>
+                            <button onClick={() => toggleDoctorActive(d.id)}
+                              className={`text-sm px-3 py-1 rounded font-medium ${d.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}
+                            >{d.active ? 'Active' : 'Inactive'}</button>
                             <button onClick={() => handleRemoveDoctor(d.id)} className="text-sm px-3 py-1 bg-red-100 text-red-600 rounded">Remove</button>
                           </div>
                         </div>

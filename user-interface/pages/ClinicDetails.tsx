@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getClinics, getDoctors, getClinicReviews, createClinicReview, ClinicReview } from '../services/api';
+import { getClinics, getDoctors, getClinicReviews, createClinicReview, editClinicReview, deleteClinicReview, ClinicReview } from '../services/api';
 import StarRating from '../components/StarRating';
 import { useAuth } from '../context/AuthContext';
+import ConfirmDialog, { ConfirmDialogState } from '../components/ConfirmDialog';
 
 const ClinicDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,21 @@ const ClinicDetails: React.FC = () => {
   const [newReviewComment, setNewReviewComment] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewError, setReviewError] = useState('');
+
+  // For editing reviews
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [editReviewRating, setEditReviewRating] = useState<number>(0);
+  const [editReviewComment, setEditReviewComment] = useState<string>('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  // For custom confirm dialog
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+  const [pendingDeleteReview, setPendingDeleteReview] = useState<{clinicId: string, reviewId: string, userId: string} | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -116,6 +132,7 @@ const ClinicDetails: React.FC = () => {
     }
   };
 
+
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto px-6 py-12">
@@ -145,8 +162,41 @@ const ClinicDetails: React.FC = () => {
     return <div className="text-center py-20 text-gray-500">Clinic not found</div>;
   }
 
+  // Handler for confirming review deletion
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteReview) return;
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
+    try {
+      await deleteClinicReview(pendingDeleteReview.clinicId, pendingDeleteReview.reviewId, pendingDeleteReview.userId);
+      // Refresh reviews and clinic rating
+      const updatedReviews = await getClinicReviews(pendingDeleteReview.clinicId);
+      setReviews(updatedReviews);
+      if (clinic) {
+        const reviewCount = updatedReviews.length;
+        const avgRating = reviewCount > 0 ? updatedReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
+        setClinic({ ...clinic, rating: Math.round(avgRating * 2) / 2, reviewCount });
+      }
+    } catch (err: any) {
+      // Optionally show error with AlertModal
+      alert(err.message || 'Failed to delete review');
+    } finally {
+      setPendingDeleteReview(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
+    setPendingDeleteReview(null);
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <>
+      <ConfirmDialog
+        state={confirmDialog}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
+      <div className="max-w-6xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8">
         <Link to="/directory" className="inline-flex items-center text-gray-500 hover:text-blue-700 transition-colors">
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,10 +296,9 @@ const ClinicDetails: React.FC = () => {
                     {doctor.email && (
                       <p className="text-xs text-gray-500 mb-2">{doctor.email}</p>
                     )}
-                    <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">{doctor.experience || '0'} Years Experience</p>
-                    {!doctor.active && doctor.workingDays && (
-                      <p className="text-xs text-gray-500 mt-2"><span className="font-semibold">Days:</span> {doctor.workingDays}</p>
-                    )}
+                    <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+                      <span className="font-semibold">Days:</span> {doctor.workingDays || 'Not specified'}
+                    </p>
                     {doctor.workingHours && (
                       <p className="text-xs text-gray-500"><span className="font-semibold">Hours:</span> {doctor.workingHours}</p>
                     )}
@@ -310,18 +359,115 @@ const ClinicDetails: React.FC = () => {
 
             <div className="space-y-6">
               {reviews.length > 0 ? (
-                reviews.map(review => (
-                  <div key={review.id} className="pb-6 border-b border-gray-100 last:border-0 last:pb-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-bold text-gray-900">{review.userName}</div>
-                      <div className="text-xs text-gray-500">{new Date(review.createdAt || '').toLocaleDateString()}</div>
+                reviews.map(review => {
+                  const isOwnReview = user && (review.userId === user.id || review.userId === user._id);
+                  const isEditing = editingReviewId === review.id;
+                  return (
+                    <div key={review.id} className="pb-6 border-b border-gray-100 last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-bold text-gray-900">{review.userName}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-xs text-gray-500">{new Date(review.createdAt || '').toLocaleDateString()}</div>
+                          {isOwnReview && !isEditing && (
+                            <>
+                              <button
+                                className="ml-2 text-blue-600 hover:underline text-xs font-semibold"
+                                onClick={() => {
+                                  setEditingReviewId(review.id!);
+                                  setEditReviewRating(review.rating);
+                                  setEditReviewComment(review.comment || '');
+                                  setEditError('');
+                                }}
+                              >Edit</button>
+                              <button
+                                className="ml-2 text-red-500 hover:underline text-xs font-semibold"
+                                onClick={() => {
+                                  setPendingDeleteReview({
+                                    clinicId: review.clinicId,
+                                    reviewId: review.id!,
+                                    userId: user.id || user._id
+                                  });
+                                  setConfirmDialog({
+                                    isOpen: true,
+                                    title: 'Delete Review',
+                                    message: 'Are you sure you want to delete this review?'
+                                  });
+                                }}
+                              >Delete</button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {isEditing ? (
+                        <form
+                          className="mb-3"
+                          onSubmit={async e => {
+                            e.preventDefault();
+                            if (editReviewRating < 0.5) {
+                              setEditError('Please select a rating of at least 0.5 stars.');
+                              return;
+                            }
+                            try {
+                              setIsSubmittingEdit(true);
+                              setEditError('');
+                              await editClinicReview(review.clinicId, review.id!, {
+                                rating: editReviewRating,
+                                comment: editReviewComment,
+                                userId: user.id || user._id
+                              });
+                              // Refresh reviews and clinic rating
+                              const updatedReviews = await getClinicReviews(review.clinicId);
+                              setReviews(updatedReviews);
+                              if (clinic) {
+                                const reviewCount = updatedReviews.length;
+                                const avgRating = reviewCount > 0 ? updatedReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
+                                setClinic({ ...clinic, rating: Math.round(avgRating * 2) / 2, reviewCount });
+                              }
+                              setEditingReviewId(null);
+                            } catch (err: any) {
+                              setEditError(err.message || 'Failed to update review');
+                            } finally {
+                              setIsSubmittingEdit(false);
+                            }
+                          }}
+                        >
+                          <div className="mb-2">
+                            <StarRating rating={editReviewRating} interactive={true} onRatingChange={setEditReviewRating} size="md" />
+                          </div>
+                          <div className="mb-2">
+                            <textarea
+                              value={editReviewComment}
+                              onChange={e => setEditReviewComment(e.target.value)}
+                              className="w-full px-3 py-2 rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 resize-none text-sm"
+                              rows={2}
+                              placeholder="Edit your comment..."
+                            />
+                          </div>
+                          {editError && <div className="text-red-500 text-xs mb-2">{editError}</div>}
+                          <div className="flex gap-2">
+                            <button
+                              type="submit"
+                              disabled={isSubmittingEdit}
+                              className="px-4 py-2 rounded bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 disabled:bg-gray-400"
+                            >{isSubmittingEdit ? 'Saving...' : 'Save'}</button>
+                            <button
+                              type="button"
+                              className="px-4 py-2 rounded bg-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-300"
+                              onClick={() => setEditingReviewId(null)}
+                            >Cancel</button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          <div className="mb-3">
+                            <StarRating rating={review.rating} size="sm" />
+                          </div>
+                          {review.comment && <p className="text-gray-700 text-sm">{review.comment}</p>}
+                        </>
+                      )}
                     </div>
-                    <div className="mb-3">
-                      <StarRating rating={review.rating} size="sm" />
-                    </div>
-                    {review.comment && <p className="text-gray-700 text-sm">{review.comment}</p>}
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-gray-500 text-center py-4">No reviews yet. Be the first to review!</p>
               )}
@@ -344,7 +490,7 @@ const ClinicDetails: React.FC = () => {
                   <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {clinic.workingHours || clinic.timings || 'Not specified'}
+                  {clinic.workingHours || clinic.timings || '9:00 AM - 11:00 PM'}
                 </div>
               </div>
               <div>
@@ -369,7 +515,9 @@ const ClinicDetails: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
+    </>
   );
 };
 

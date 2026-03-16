@@ -164,6 +164,42 @@ export const createClinicReview = async (
   return response.json();
 };
 
+// Edit a clinic review
+export const editClinicReview = async (
+  clinicId: string,
+  reviewId: string,
+  payload: { rating?: number; comment?: string; userId: string }
+): Promise<{ message: string; rating: number; reviewCount: number }> => {
+  const response = await fetch(`${API_BASE_URL}/clinics/${clinicId}/reviews/${reviewId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to update review');
+  }
+  return response.json();
+};
+
+// Delete a clinic review
+export const deleteClinicReview = async (
+  clinicId: string,
+  reviewId: string,
+  userId: string
+): Promise<{ message: string; rating: number; reviewCount: number }> => {
+  const response = await fetch(`${API_BASE_URL}/clinics/${clinicId}/reviews/${reviewId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to delete review');
+  }
+  return response.json();
+};
+
 export const updateClinicProfile = async (
   id: string,
   clinic: Partial<Clinic & { description?: string; email?: string; phone?: string; location?: string; workingHours?: string }>
