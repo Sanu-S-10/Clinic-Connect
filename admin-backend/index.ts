@@ -141,6 +141,108 @@ app.get('/api/clinics/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Get clinic reviews
+app.get('/api/clinics/:id/reviews', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const { id } = req.params as { id: string };
+    
+    if (!ObjectId.isValid(String(id))) {
+      return res.status(400).json({ error: 'Invalid clinic ID' });
+    }
+
+    const reviews = await db.collection('clinicReviews')
+      .find({ clinicId: new ObjectId(String(id)) })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    const formatted = reviews.map(r => ({
+      id: r._id.toString(),
+      ...r
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to fetch reviews',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Add a clinic review
+app.post('/api/clinics/:id/reviews', async (req: Request, res: Response) => {
+  try {
+    const { db } = await connectToDatabase();
+    const { id } = req.params as { id: string };
+    const { rating, comment, userId, userName } = req.body;
+
+    if (!ObjectId.isValid(String(id))) {
+      return res.status(400).json({ error: 'Invalid clinic ID' });
+    }
+
+    if (typeof rating !== 'number' || rating < 0.5 || rating > 5 || rating % 0.5 !== 0) {
+      return res.status(400).json({ error: 'Rating must be a number between 0.5 and 5, in increments of 0.5' });
+    }
+
+    const clinicId = new ObjectId(String(id));
+
+    // Check if clinic exists
+    let clinic = await db.collection('clinics').findOne({ _id: clinicId });
+    if (!clinic) {
+      clinic = await db.collection('clinicRegistrations').findOne({ _id: clinicId, status: 'approved' });
+    }
+
+    if (!clinic) {
+      return res.status(404).json({ error: 'Clinic not found' });
+    }
+
+    // Insert review
+    const result = await db.collection('clinicReviews').insertOne({
+      clinicId,
+      rating,
+      comment: comment || '',
+      userId: userId || null,
+      userName: userName || 'Anonymous',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    // Recalculate average rating
+    const allReviews = await db.collection('clinicReviews').find({ clinicId }).toArray();
+    const reviewCount = allReviews.length;
+    const avgRating = reviewCount > 0 
+      ? allReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount 
+      : 0;
+    
+    const roundedRating = Math.round(avgRating * 2) / 2; // Round to nearest 0.5
+
+    // Update clinic collections with new rating
+    await db.collection('clinics').updateOne(
+      { _id: clinicId },
+      { $set: { rating: roundedRating, reviewCount } }
+    );
+    
+    await db.collection('clinicRegistrations').updateOne(
+      { _id: clinicId },
+      { $set: { rating: roundedRating, reviewCount } }
+    );
+
+    res.status(201).json({
+      message: 'Review added successfully',
+      id: result.insertedId.toString(),
+      rating: roundedRating,
+      reviewCount
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to add review',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Update clinic details (clinic admin dashboard) - updates both clinics and clinicRegistrations
 app.put('/api/clinics/:id', async (req: Request, res: Response) => {
   try {
@@ -865,7 +967,7 @@ app.delete('/api/users/:userId', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { ObjectId } = await import('mongodb');
-    const { userId } = req.params;
+    const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : String(req.params.userId);
     if (!ObjectId.isValid(userId)) return res.status(400).json({ error: 'Invalid user ID' });
 
     const existingUser = await db.collection('users').findOne({ _id: new ObjectId(userId) });
@@ -899,7 +1001,7 @@ app.put('/api/users/:userId/revoke', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { ObjectId } = await import('mongodb');
-    const { userId } = req.params;
+    const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : String(req.params.userId);
     if (!ObjectId.isValid(userId)) return res.status(400).json({ error: 'Invalid user ID' });
     const result = await db.collection('users').updateOne(
       { _id: new ObjectId(userId) },
@@ -917,7 +1019,7 @@ app.put('/api/users/:userId/grant', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { ObjectId } = await import('mongodb');
-    const { userId } = req.params;
+    const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : String(req.params.userId);
     if (!ObjectId.isValid(userId)) return res.status(400).json({ error: 'Invalid user ID' });
     const result = await db.collection('users').updateOne(
       { _id: new ObjectId(userId) },

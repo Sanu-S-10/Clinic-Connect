@@ -12,7 +12,7 @@ const Home: React.FC = () => {
     const handleScroll = () => {
       // Get the hash from the URL
       const hash = window.location.hash.replace('#/', '').replace('#', '');
-      
+
       // Only scroll to sections if there's an actual hash
       if (hash && hash !== '') {
         const el = document.getElementById(hash);
@@ -26,7 +26,7 @@ const Home: React.FC = () => {
 
     // Listen for hash changes
     window.addEventListener('hashchange', handleScroll);
-    
+
     // Scroll on hash change (not on initial mount without hash)
     if (window.location.hash) {
       handleScroll();
@@ -45,7 +45,7 @@ const Home: React.FC = () => {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         setContactSent(true);
         setContactForm({ name: '', email: '', message: '' });
@@ -61,35 +61,109 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="animate-in fade-in duration-700">
+    <div className="animate-in fade-in duration-700 bg-[#DCEBFC] min-h-screen relative overflow-hidden">
+      {/* Background Curved Shades */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Top Left Curve */}
+        <svg className="absolute top-0 left-0 w-[50%] md:w-[450px] h-[400px] md:h-[600px] text-[#CBDFFA] opacity-70" viewBox="0 0 450 600" fill="currentColor" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <path d="M0,0 L250,0 C180,150 280,300 150,450 C80,530 50,580 0,600 Z" />
+        </svg>
+      </div>
+
       {/* Hero - Home */}
-      <section id="home" className="px-6 flex flex-col items-center justify-center min-h-[70vh]">
+      <section id="home" className="px-6 flex flex-col items-center justify-center min-h-[70vh] relative w-full">
         <div className="max-w-6xl mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
             {/* Left side - Text and Button */}
             <div className="flex flex-col justify-center">
-              <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-8 leading-tight tracking-tight">
-                Your health, <span className="text-blue-700">made better.</span>
+              <h1 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-[#23455E] mb-6 leading-[1.1] tracking-tight">
+                Your health, <span className="text-blue-600">made better.</span>
               </h1>
-              <p className="text-lg md:text-xl text-gray-500 mb-12 leading-relaxed font-normal">
-                The most trusted healthcare discovery platform in India. Find and book appointments at premium clinics near you.
+              <p className="text-lg md:text-xl text-[#3A5B74] mb-10 leading-relaxed font-medium max-w-[90%]">
+                Connecting people with reliable healthcare, effortlessly. Find and book appointments at trusted clinics near you.
               </p>
+
               <button
                 onClick={() => navigate('/directory')}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-5 rounded-full text-lg font-bold shadow-xl shadow-blue-100 transition-all hover:-translate-y-1 active:scale-95 self-start"
+                className="bg-[#3981C5] hover:bg-blue-700 text-white px-12 py-5 rounded-full text-lg font-bold shadow-xl shadow-blue-200 transition-all hover:-translate-y-1 active:scale-95 self-start"
               >
                 Find Clinics Now
               </button>
             </div>
 
             {/* Right side - Image */}
-            <div className="flex items-center justify-center">
-              <div className="frosted-glass p-4 md:p-6 rounded-3xl border border-white/50 shadow-2xl shadow-blue-50/40">
-                <img 
-                  src="/clinic finding.png" 
-                  alt="Clinic Finding" 
-                  className="w-full h-auto rounded-2xl"
-                />
+            <div className="flex items-center justify-center relative">
+              <img
+                src="/clinic finding.png"
+                alt="Clinic Finding"
+                className="w-full max-w-lg lg:max-w-xl h-auto relative z-10"
+                style={{
+                  WebkitMaskImage: 'radial-gradient(50% 50% at 50% 50%, black 70%, transparent 100%)',
+                  maskImage: 'radial-gradient(50% 50% at 50% 50%, black 70%, transparent 100%)'
+                }}
+              />
+
+              {/* Top Right Glass Card Overlay */}
+              <div className="absolute top-12 right-0 md:top-8 md:-right-12 z-20 bg-white/20 backdrop-blur-lg border border-white/60 p-3 pr-8 rounded-full shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] flex items-center gap-4 scale-[0.7] md:scale-90">
+                <div className="pr-4 pl-4 py-1">
+                  <div className="text-xl font-black text-[#23455E] mb-[-2px]">Smart Clinic</div>
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-[#3A5B74]">
+                    Discovery
+                    <svg className="w-6 h-6 text-red-500 drop-shadow-md" viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                      <path fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 12h6l.5-1 2 4.5 2-7 1.5 3.5h6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Floating Icon */}
+                <div className="absolute -top-3 -right-3 w-7 h-7 bg-white rounded-full shadow-lg flex items-center justify-center">
+                  <div className="w-5 h-5 bg-[#3981C5] rounded-full flex items-center justify-center">
+                    <span className="text-white text-[12px] leading-none mb-[1px]">★</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle Left Glass Card Overlay */}
+              <div className="absolute top-[40%] -left-8 md:top-[45%] md:-left-24 z-20 bg-white/20 backdrop-blur-lg border border-white/60 p-3 pr-6 rounded-full shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] flex items-center gap-3 scale-[0.7] md:scale-90">
+                <div className="w-10 h-10 bg-green-100/80 rounded-full flex items-center justify-center text-green-600 ml-1 shadow-inner">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div className="pr-2">
+                  <div className="text-lg font-black text-[#23455E]">Verified</div>
+                  <div className="text-sm font-semibold text-[#3A5B74]">Professionals</div>
+                </div>
+              </div>
+
+
+
+              {/* Bottom Left Glass Card Overlay */}
+              <div className="absolute top-[75%] md:top-auto md:bottom-2 md:-left-16 z-20 bg-white/20 backdrop-blur-lg border border-white/60 p-3 pr-8 rounded-full shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] flex items-center gap-4 scale-[0.7] md:scale-90">
+                <div className="pr-4 pl-4 py-1">
+                  <div className="flex items-center gap-2 mb-[-2px]">
+                    <div className="text-xl font-black text-[#23455E]">20+</div>
+                    <svg className="w-6 h-6 text-[#3981C5]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>
+                      <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/>
+                      <circle cx="20" cy="10" r="2"/>
+                    </svg>
+                  </div>
+                  <div className="text-sm font-semibold text-[#3A5B74]">Medical Specialties</div>
+                </div>
+
+                {/* Floating Checkmark Icon */}
+                <div className="absolute -top-3 -right-3 w-7 h-7 bg-white rounded-full shadow-lg flex items-center justify-center">
+                  <div className="w-5 h-5 bg-[#3981C5] rounded-full flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Right Glass Card Overlay */}
+              <div className="absolute bottom-15 -right-4 md:bottom-36 md:-right-44 z-20 bg-white/20 backdrop-blur-lg border border-white/60 p-3 px-6 rounded-full shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] flex items-center justify-center scale-[0.7] md:scale-90">
+                <div className="text-xl font-black text-[#23455E]">
+                  Find <span className="text-[#3981C5] mx-1.5">•</span> Choose <span className="text-[#3981C5] mx-1.5">•</span> Book
+                </div>
               </div>
             </div>
           </div>

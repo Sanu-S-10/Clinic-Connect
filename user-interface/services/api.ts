@@ -8,9 +8,10 @@ export interface Clinic {
   name: string;
   address: string;
   specialties: string[];
-  rating?: number;
   image?: string;
   workingHours?: string;
+  rating?: number;
+  reviewCount?: number;
 }
 
 export interface Doctor {
@@ -89,6 +90,18 @@ export interface ClinicRegistration {
   workingHours?: string;
 }
 
+export interface ClinicReview {
+  id?: string;
+  _id?: string;
+  clinicId: string;
+  rating: number;
+  comment?: string;
+  userId?: string;
+  userName?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 // Health check
 export const checkHealth = async () => {
   const response = await fetch(`${API_BASE_URL}/health`);
@@ -122,6 +135,33 @@ export const getClinicProfile = async (id: string): Promise<Clinic & { descripti
   if (!response.ok) throw new Error('Failed to fetch clinic profile');
   const data = await response.json();
   return { ...data, id: data.id ?? data._id?.toString?.() };
+};
+
+export const getClinicReviews = async (clinicId: string): Promise<ClinicReview[]> => {
+  const response = await fetch(`${API_BASE_URL}/clinics/${clinicId}/reviews`);
+  if (!response.ok) throw new Error('Failed to fetch clinic reviews');
+  const data = await response.json();
+  return (Array.isArray(data) ? data : []).map((r: any) => ({
+    ...r,
+    id: r.id ?? r._id?.toString?.(),
+    clinicId: r.clinicId?.toString?.() || r.clinicId
+  }));
+};
+
+export const createClinicReview = async (
+  clinicId: string,
+  payload: Pick<ClinicReview, 'rating' | 'comment' | 'userId' | 'userName'>
+): Promise<{ message: string; id: string; rating: number; reviewCount: number }> => {
+  const response = await fetch(`${API_BASE_URL}/clinics/${clinicId}/reviews`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to submit review');
+  }
+  return response.json();
 };
 
 export const updateClinicProfile = async (

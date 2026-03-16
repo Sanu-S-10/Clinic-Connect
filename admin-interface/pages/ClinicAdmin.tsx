@@ -87,6 +87,10 @@ const ClinicAdmin: React.FC = () => {
             experience: x.experience || '', 
             previouslyWorked: x.previouslyWorked || '', 
             email: x.email || '', 
+            image: x.image, 
+            clinicName: x.clinicName || '', 
+            workingDays: x.workingDays || '', 
+            workingHours: x.workingHours || '',
             active: x.active ?? true 
           }));
         setDoctors(mappedDoctors);
@@ -127,6 +131,7 @@ const ClinicAdmin: React.FC = () => {
 
   // UI state
   const [activeTab, setActiveTab] = useState<'dashboard'|'doctors'|'appointments'|'schedule'|'profile'>('dashboard');
+  const [showPreviousAppointments, setShowPreviousAppointments] = useState(false);
   const [showDoctorModal, setShowDoctorModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<LocalDoctor | null>(null);
   const [showSpecialtySuggestions, setShowSpecialtySuggestions] = useState(false);
@@ -170,7 +175,7 @@ const ClinicAdmin: React.FC = () => {
   }, [doctors]);
 
   // Doctor CRUD
-  const openAddDoctor = () => { setEditingDoctor({ id: '', name: '', specialty: '', specialties: [], clinicId: '', experience: '', previouslyWorked: '', email: '', active: true }); setShowDoctorModal(true); };
+  const openAddDoctor = () => { setEditingDoctor({ id: '', name: '', specialty: '', specialties: [], clinicId: '', experience: '', previouslyWorked: '', email: '', image: undefined, clinicName: clinicProfile?.name || '', workingDays: '', workingHours: '', active: true } as LocalDoctor); setShowDoctorModal(true); };
   
   const handleSpecialtyInput = (value: string) => {
     setEditingDoctor(d => d && { ...d, specialty: value, specialties: [value] } as LocalDoctor);
@@ -344,7 +349,7 @@ const ClinicAdmin: React.FC = () => {
           const docClinicId = x.clinicId?.toString?.() || x.clinicId;
           return docClinicId === clinicIdToMatch;
         })
-        .map(x => ({ 
+        .map((x: any) => ({ 
           id: x._id?.toString?.() || x.id, 
           name: x.name || '', 
           specialty: x.specialty || '', 
@@ -353,6 +358,10 @@ const ClinicAdmin: React.FC = () => {
           experience: x.experience || '', 
           previouslyWorked: x.previouslyWorked || '', 
           email: x.email || '', 
+          image: x.image, 
+          clinicName: x.clinicName || '', 
+          workingDays: x.workingDays || '', 
+          workingHours: x.workingHours || '',
           active: x.active ?? true 
         })));
     } catch (err) {
@@ -647,77 +656,113 @@ const ClinicAdmin: React.FC = () => {
                 {visibleAppointments.length === 0 ? (
                   <p className="text-gray-500 py-8 text-center">No appointments found</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="text-left text-xs text-gray-600 bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-3 font-semibold">Patient</th>
-                          <th className="px-3 py-3 font-semibold">Phone</th>
-                          <th className="px-3 py-3 font-semibold">Doctor</th>
-                          <th className="px-3 py-3 font-semibold">Date & Time</th>
-                          <th className="px-3 py-3 font-semibold">Token</th>
-                          <th className="px-3 py-3 font-semibold">Status</th>
-                          <th className="px-3 py-3 font-semibold">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {visibleAppointments.map(a => (
-                          <tr key={a.id} id={`receipt-${a.id}`} className="border-t hover:bg-gray-50">
-                            <td className="px-3 py-2">
-                              <div className="font-medium">{a.patientName}</div>
-                              <div className="text-xs text-gray-500">{a.patientEmail}</div>
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="text-sm">{(a as any).patientPhone || '—'}</div>
-                            </td>
-                            <td className="px-3 py-2">{doctors.find(d => d.id === a.doctorId)?.name || '—'}</td>
-                            <td className="px-3 py-2">
-                              <div>{a.date}</div>
-                              <div className="text-xs text-gray-500">{a.time}</div>
-                            </td>
-                            <td className="px-3 py-2">
-                              <code className="bg-gray-100 px-2 py-1 rounded text-xs text-blue-600 font-semibold">
-                                {(a as any).tokenNumber ? (a as any).tokenNumber : '—'}
-                              </code>
-                            </td>
-                            <td className="px-3 py-2">
-                              <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                a.status === 'Booked' ? 'bg-blue-100 text-blue-700' :
-                                a.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                                'bg-gray-100 text-gray-700'
-                              }`}>
-                                {a.status}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 flex gap-2">
-                              <button
-                                onClick={() => handleDownloadReceipt(a)}
-                                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
-                                title="Download Receipt"
-                              >
-                                ⬇️
-                              </button>
-                              {a.status !== 'Cancelled' && (
-                                <button 
-                                  onClick={() => handleCancel(a.id)} 
-                                  className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition"
-                                >
-                                  Cancel
-                                </button>
-                              )}
-                              {a.status === 'Cancelled' && (
-                                <button 
-                                  onClick={() => handleRemoveAppointment(a.id)} 
-                                  className="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition"
-                                >
-                                  Remove
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="space-y-8">
+                    {[
+                      {
+                        title: "Today & Upcoming Appointments",
+                        data: visibleAppointments.filter(a => a.date >= new Date("2024-01-01T00:00:00Z").toISOString().slice(0, 10).replace("2024-01-01", new Date().toISOString().slice(0, 10))),
+                        isCollapsible: false
+                      },
+                      {
+                        title: "Previous Appointments",
+                        data: visibleAppointments.filter(a => a.date < new Date("2024-01-01T00:00:00Z").toISOString().slice(0, 10).replace("2024-01-01", new Date().toISOString().slice(0, 10))),
+                        isCollapsible: true
+                      }
+                    ].map((section, idx) => {
+                      const isExpanded = !section.isCollapsible || showPreviousAppointments;
+                      return (
+                      <div key={idx} className="bg-white border rounded-lg overflow-hidden">
+                        <div 
+                          className={`bg-gray-50 px-4 py-3 border-b ${section.isCollapsible ? 'cursor-pointer hover:bg-gray-100 flex justify-between items-center' : ''}`}
+                          onClick={() => section.isCollapsible && setShowPreviousAppointments(!showPreviousAppointments)}
+                        >
+                          <h4 className="font-semibold text-gray-700">{section.title} <span className="text-gray-400 text-sm ml-2">({section.data.length})</span></h4>
+                          {section.isCollapsible && (
+                            <span className="text-gray-500">
+                              {showPreviousAppointments ? '▲' : '▼'}
+                            </span>
+                          )}
+                        </div>
+                        {isExpanded && (
+                          section.data.length === 0 ? (
+                            <p className="text-gray-500 py-6 text-center text-sm">No appointments in this category</p>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                              <thead className="text-left text-xs text-gray-500 bg-gray-50">
+                                <tr>
+                                  <th className="px-3 py-3 font-semibold">Patient</th>
+                                  <th className="px-3 py-3 font-semibold">Phone</th>
+                                  <th className="px-3 py-3 font-semibold">Doctor</th>
+                                  <th className="px-3 py-3 font-semibold">Date & Time</th>
+                                  <th className="px-3 py-3 font-semibold">Token</th>
+                                  <th className="px-3 py-3 font-semibold">Status</th>
+                                  <th className="px-3 py-3 font-semibold">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {section.data.map(a => (
+                                  <tr key={a.id} id={`receipt-${a.id}`} className="border-t hover:bg-gray-50">
+                                    <td className="px-3 py-2">
+                                      <div className="font-medium text-gray-900">{a.patientName}</div>
+                                      <div className="text-xs text-gray-500">{a.patientEmail}</div>
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <div className="text-sm text-gray-600">{(a as any).patientPhone || '—'}</div>
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-700">{doctors.find(d => d.id === a.doctorId)?.name || '—'}</td>
+                                    <td className="px-3 py-2">
+                                      <div className="text-gray-900 font-medium">{a.date}</div>
+                                      <div className="text-xs text-gray-500">{a.time}</div>
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <code className="bg-gray-100 px-2 py-1 rounded text-xs text-blue-600 font-bold">
+                                        {(a as any).tokenNumber ? (a as any).tokenNumber : '—'}
+                                      </code>
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <span className={`px-2 py-1 rounded-md text-xs font-semibold ${
+                                        a.status === 'Booked' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                        a.status === 'Cancelled' ? 'bg-red-50 text-red-700 border border-red-200' :
+                                        'bg-gray-100 text-gray-700 border border-gray-200'
+                                      }`}>
+                                        {a.status}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 flex gap-2">
+                                      <button
+                                        onClick={() => handleDownloadReceipt(a)}
+                                        className="px-2 py-1 bg-white border border-gray-300 text-gray-700 text-xs rounded shadow-sm hover:bg-gray-50 transition"
+                                        title="Download Receipt"
+                                      >
+                                        ⬇️
+                                      </button>
+                                      {a.status !== 'Cancelled' && (
+                                        <button 
+                                          onClick={() => handleCancel(a.id)} 
+                                          className="px-3 py-1 bg-red-50 text-red-600 font-medium text-xs rounded border border-red-200 hover:bg-red-100 transition"
+                                        >
+                                          Cancel
+                                        </button>
+                                      )}
+                                      {a.status === 'Cancelled' && (
+                                        <button 
+                                          onClick={() => handleRemoveAppointment(a.id)} 
+                                          className="px-3 py-1 bg-gray-100 text-gray-600 font-medium text-xs rounded hover:bg-gray-200 transition"
+                                        >
+                                          Remove
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )
+                        )}
+                      </div>
+                    )})}
                   </div>
                 )}
               </div>

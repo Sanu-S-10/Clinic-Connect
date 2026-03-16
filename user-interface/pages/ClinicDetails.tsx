@@ -1,7 +1,8 @@
-
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getClinics, getDoctors } from '../services/api';
+import { getClinics, getDoctors, getClinicReviews, createClinicReview, ClinicReview } from '../services/api';
+import StarRating from '../components/StarRating';
+import { useAuth } from '../context/AuthContext';
 
 const ClinicDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -10,6 +11,13 @@ const ClinicDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
+
+  const { user } = useAuth();
+  const [reviews, setReviews] = useState<ClinicReview[]>([]);
+  const [newReviewRating, setNewReviewRating] = useState<number>(0);
+  const [newReviewComment, setNewReviewComment] = useState<string>('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -27,27 +35,22 @@ const ClinicDetails: React.FC = () => {
         }
         const doctors = await getDoctors();
         if (!mounted) return;
-        
-        console.log('Clinic ID from URL:', id);
-        console.log('Found clinic:', found);
-        console.log('Found clinic _id:', found?._id?.toString?.());
-        console.log('Found clinic id:', found?.id);
-        console.log('All doctors:', doctors);
-        
         const clinicIdToMatch = found?._id?.toString?.() || found?.id || id || '';
-        console.log('Clinic ID to match:', clinicIdToMatch);
-        
         const filtered = doctors.filter((d: any) => {
           const docClinicId = d?.clinicId?.toString?.() || String(d?.clinicId || '');
-          const matches = docClinicId === clinicIdToMatch;
-          console.log(`Doctor "${d.name}": clinicId="${d.clinicId}" -> "${docClinicId}" vs "${clinicIdToMatch}" - matches: ${matches}`);
-          return matches;
+          return docClinicId === clinicIdToMatch;
         });
-        console.log('Filtered doctors for this clinic:', filtered);
         setClinicDoctors(filtered);
+        
+        try {
+          const clinicReviews = await getClinicReviews(clinicIdToMatch);
+          if (mounted) setReviews(clinicReviews);
+        } catch (err) {
+          console.error('Failed to load reviews:', err);
+        }
+
         setLoading(false);
       } catch (err) {
-        console.error(err);
         if (mounted) {
           setError(true);
           setLoading(false);
@@ -77,6 +80,41 @@ const ClinicDetails: React.FC = () => {
       (d.specialty || '').toLowerCase() === selectedSpecialty.toLowerCase()
     );
   }, [clinicDoctors, selectedSpecialty]);
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      setReviewError('You must be logged in to leave a review.');
+      return;
+    }
+    if (newReviewRating < 0.5) {
+      setReviewError('Please select a rating of at least 0.5 stars.');
+      return;
+    }
+    try {
+      setIsSubmittingReview(true);
+      setReviewError('');
+      const clinicIdToUse = clinic.id || clinic._id;
+      const res = await createClinicReview(clinicIdToUse, {
+        rating: newReviewRating,
+        comment: newReviewComment,
+        userId: user.id || user._id,
+        userName: user.name || 'Anonymous'
+      });
+      
+      setClinic((prev: any) => prev ? { ...prev, rating: res.rating, reviewCount: res.reviewCount } : prev);
+      
+      const updatedReviews = await getClinicReviews(clinicIdToUse);
+      setReviews(updatedReviews);
+      
+      setNewReviewRating(0);
+      setNewReviewComment('');
+    } catch (err: any) {
+      setReviewError(err.message || 'Failed to submit review');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -123,7 +161,7 @@ const ClinicDetails: React.FC = () => {
           <div className="frosted-glass p-8 md:p-12 rounded-3xl shadow-sm">
             <div className="flex flex-wrap items-center gap-4 mb-6">
               <span className="text-xs font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-4 py-1.5 rounded-full">
-                {clinic.type}
+                {clinic.type || 'Clinic'}
               </span>
               <span className="text-gray-400 flex items-center text-sm">
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,10 +171,16 @@ const ClinicDetails: React.FC = () => {
                 {clinic.location}
               </span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">{clinic.name}</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">{clinic.name}</h1>
+            <div className="flex items-center gap-2 mb-6">
+              <StarRating rating={clinic.rating || 0} size="md" />
+              <span className="text-sm font-medium text-gray-500">
+                {clinic.rating || 0} ({clinic.reviewCount || 0} {(clinic.reviewCount === 1) ? 'review' : 'reviews'})
+              </span>
+            </div>
             <p className="text-lg text-gray-500 mb-8 leading-relaxed">{clinic.description || 'Providing exceptional healthcare services with a focus on patient comfort and professional excellence.'}</p>
 
-            <div className="border-t border-gray-100 pt-8 mt-8">
+            <div className="border-t-2 border-b-2 border-gray-200 py-8 mt-8">
               <h2 className="text-xl font-bold text-gray-900 mb-8">Specialized Services</h2>
               <div className="flex flex-wrap gap-3">
                 {(clinic.specialties || []).map((service: string) => (
@@ -226,6 +270,64 @@ const ClinicDetails: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Reviews Section */}
+          <div className="frosted-glass p-8 md:p-12 rounded-3xl shadow-sm mt-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8">Patient Reviews</h2>
+            
+            <div className="mb-10 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Write a Review</h3>
+              {reviewError && <p className="text-red-500 text-sm mb-4">{reviewError}</p>}
+              <form onSubmit={handleSubmitReview}>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+                  <StarRating 
+                    rating={newReviewRating} 
+                    interactive={true} 
+                    onRatingChange={setNewReviewRating} 
+                    size="lg" 
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Comment</label>
+                  <textarea
+                    value={newReviewComment}
+                    onChange={e => setNewReviewComment(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 resize-none"
+                    rows={3}
+                    placeholder="Share your experience (optional)..."
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmittingReview || !user}
+                  className={`px-6 py-3 rounded-xl font-bold text-white transition-all ${isSubmittingReview || !user ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-50'}`}
+                >
+                  {isSubmittingReview ? 'Submitting...' : !user ? 'Login to Review' : 'Submit Review'}
+                </button>
+              </form>
+            </div>
+
+            <div className="space-y-6">
+              {reviews.length > 0 ? (
+                reviews.map(review => (
+                  <div key={review.id} className="pb-6 border-b border-gray-100 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-bold text-gray-900">{review.userName}</div>
+                      <div className="text-xs text-gray-500">{new Date(review.createdAt || '').toLocaleDateString()}</div>
+                    </div>
+                    <div className="mb-3">
+                      <StarRating rating={review.rating} size="sm" />
+                    </div>
+                    {review.comment && <p className="text-gray-700 text-sm">{review.comment}</p>}
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">No reviews yet. Be the first to review!</p>
+              )}
+            </div>
+          </div>
+
         </div>
 
         <div className="space-y-8">

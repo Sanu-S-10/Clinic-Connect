@@ -140,6 +140,15 @@ const Booking: React.FC = () => {
     }
   };
 
+  const formatAmPm = (date: Date) => {
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+  };
+
   // Generate time slots based on working hours
   const getTimeSlots = () => {
     const { start, end } = parseWorkingHours(doctor?.workingHours);
@@ -151,17 +160,16 @@ const Booking: React.FC = () => {
     // Generate 1-hour slots
     let current = new Date(startTime);
     while (current < endTime) {
-      const hours = String(current.getHours()).padStart(2, '0');
-      const minutes = String(current.getMinutes()).padStart(2, '0');
       const nextHour = new Date(current);
       nextHour.setHours(nextHour.getHours() + 1);
       
-      const nextHours = String(nextHour.getHours()).padStart(2, '0');
-      const nextMinutes = String(nextHour.getMinutes()).padStart(2, '0');
+      const currentFormatted = formatAmPm(current);
+      const nextFormatted = formatAmPm(nextHour);
       
+      // We can sort slots or use 24h internal id if we wanted, but the UI displays label
       slots.push({
-        id: `${hours}:${minutes}`,
-        label: `${hours}:${minutes} - ${nextHours}:${nextMinutes}`
+        id: currentFormatted,
+        label: `${currentFormatted} - ${nextFormatted}`
       });
       
       current = nextHour;

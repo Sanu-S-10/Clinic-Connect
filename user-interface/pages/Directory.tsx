@@ -10,6 +10,7 @@ const Directory: React.FC = () => {
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
   const [clinics, setClinics] = useState<any[]>([]);
   const [doctors, setDoctors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -22,8 +23,11 @@ const Directory: React.FC = () => {
         console.log('Doctors fetched:', data);
         if (mounted) setDoctors(data);
       })
-    ]).catch((err) => {
+    ]).then(() => {
+      if (mounted) setLoading(false);
+    }).catch((err) => {
       console.error('Failed to fetch data:', err);
+      if (mounted) setLoading(false);
     });
     return () => { mounted = false; };
   }, []);
@@ -39,7 +43,7 @@ const Directory: React.FC = () => {
 
     // Filter by location
     if (selectedLocation) {
-      filtered = filtered.filter(clinic => clinic.location === selectedLocation);
+      filtered = filtered.filter(clinic => clinic.location?.trim() === selectedLocation);
     }
 
     // Filter by doctor specialty
@@ -95,7 +99,7 @@ const Directory: React.FC = () => {
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white/50 border border-gray-100 focus:outline-none focus:ring-4 focus:ring-blue-50/50 focus:border-blue-200 transition-all text-gray-700"
+                    className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white border-2 border-gray-200 shadow-sm hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-50/50 focus:border-blue-200 transition-all text-gray-700"
                   />
                 </div>
               </div>
@@ -111,11 +115,11 @@ const Directory: React.FC = () => {
                   <select
                     value={selectedLocation}
                     onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="w-full pl-12 pr-10 py-4 rounded-2xl bg-white/50 border border-gray-100 focus:outline-none focus:ring-4 focus:ring-blue-50/50 focus:border-blue-200 transition-all appearance-none cursor-pointer text-gray-700"
+                    className="w-full pl-12 pr-10 py-4 rounded-2xl bg-white border-2 border-gray-200 shadow-sm hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-50/50 focus:border-blue-200 transition-all appearance-none cursor-pointer text-gray-700"
                   >
                     <option value="">All Locations</option>
-                    {Array.from(new Set(clinics.map(c => c.location))).map(loc => (
-                        <option key={loc} value={loc}>{loc}</option>
+                    {Array.from(new Set(clinics.map(c => c.location?.trim()).filter(Boolean))).sort().map(loc => (
+                        <option key={loc as string} value={loc as string}>{loc as string}</option>
                       ))}
                   </select>
                   <span className="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none text-gray-300">
@@ -137,7 +141,7 @@ const Directory: React.FC = () => {
                   <select
                     value={selectedSpecialty}
                     onChange={(e) => setSelectedSpecialty(e.target.value)}
-                    className="w-full pl-12 pr-10 py-4 rounded-2xl bg-white/50 border border-gray-100 focus:outline-none focus:ring-4 focus:ring-blue-50/50 focus:border-blue-200 transition-all appearance-none cursor-pointer text-gray-700"
+                    className="w-full pl-12 pr-10 py-4 rounded-2xl bg-white border-2 border-gray-200 shadow-sm hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-50/50 focus:border-blue-200 transition-all appearance-none cursor-pointer text-gray-700"
                   >
                     <option value="">All Specialties</option>
                     {specialties.map(specialty => (
@@ -158,13 +162,28 @@ const Directory: React.FC = () => {
             <div className="flex items-center justify-between mb-12">
               <h3 className="text-3xl font-bold text-gray-900 tracking-tight">
                 {selectedLocation ? `Clinics in ${selectedLocation.split(',')[0]}` : 'Available Clinics'}
-                <span className="ml-4 text-sm font-bold text-blue-100 bg-blue-600 px-3 py-1 rounded-full align-middle">
-                  {filteredClinics.length}
-                </span>
+                {!loading && (
+                  <span className="ml-4 text-sm font-bold text-blue-100 bg-blue-600 px-3 py-1 rounded-full align-middle">
+                    {filteredClinics.length}
+                  </span>
+                )}
               </h3>
             </div>
             
-            {filteredClinics.length > 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 h-48 animate-pulse flex flex-col justify-between">
+                    <div>
+                      <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                    </div>
+                    <div className="h-10 bg-gray-200 rounded w-full mt-4"></div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredClinics.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                 {filteredClinics.map(clinic => (
                   <ClinicCard key={clinic.id} clinic={clinic} />
