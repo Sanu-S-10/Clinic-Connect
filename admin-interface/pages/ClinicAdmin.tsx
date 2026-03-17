@@ -22,6 +22,8 @@ type Doctor = {
 type LocalDoctor = Doctor & {
   specialties: string[];
   active: boolean;
+  workingDays?: string;
+  workingHours?: string;
 };
 
 type Appointment = {
@@ -516,9 +518,15 @@ const ClinicAdmin: React.FC = () => {
   const [showApptModal, setShowApptModal] = useState(false);
   const [newAppt, setNewAppt] = useState<Partial<LocalAppointment>>({ patientName: '', patientEmail: '', patientPhone: '', doctorId: '', date: '', time: '', status: 'Booked' });
   const handleCreateAppt = async () => {
-    if (!newAppt.patientName || !newAppt.doctorId || !newAppt.date || !newAppt.time) return alert('Missing fields');
+    if (!newAppt.patientName || !newAppt.doctorId || !newAppt.date || !newAppt.time) {
+      setAlert({ isOpen: true, title: 'Validation Error', message: 'Missing fields', type: 'error' });
+      return;
+    }
     const conflict = appointments.find(a => a.doctorId === newAppt.doctorId && a.date === newAppt.date && a.time === newAppt.time && a.status !== 'Cancelled');
-    if (conflict) return alert('Time slot already booked for this doctor');
+    if (conflict) {
+      setAlert({ isOpen: true, title: 'Error', message: 'Time slot already booked for this doctor', type: 'error' });
+      return;
+    }
     try {
       const payload = { clinicId: uid, doctorId: newAppt.doctorId, patientName: newAppt.patientName, patientEmail: newAppt.patientEmail, patientPhone: (newAppt as any).patientPhone, appointmentDate: newAppt.date, appointmentTime: newAppt.time };
       const res = await createBooking(payload as any);
@@ -527,7 +535,10 @@ const ClinicAdmin: React.FC = () => {
       setAppointments(bres.map(b => ({ id: b._id?.toString?.() || b.id, patientName: b.patientName, patientEmail: b.patientEmail, doctorId: b.doctorId, appointmentDate: b.appointmentDate, appointmentTime: b.appointmentTime, date: b.appointmentDate || b.date, time: b.appointmentTime || b.time, status: b.status || 'Booked', notes: b.notes || '', patientPhone: b.patientPhone || b.phone || '', tokenNumber: b.tokenNumber || b.token || '' } as LocalAppointment)));
       setShowApptModal(false);
       setNewAppt({ patientName: '', patientEmail: '', patientPhone: '', doctorId: '', date: '', time: '', status: 'Booked' });
-    } catch (err) { console.error(err); alert('Failed to create appointment'); }
+    } catch (err) {
+      console.error(err);
+      setAlert({ isOpen: true, title: 'Error', message: 'Failed to create appointment', type: 'error' });
+    }
   };
 
   if (!user) return null;

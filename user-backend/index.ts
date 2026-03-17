@@ -512,30 +512,31 @@ app.post('/api/bookings', async (req: Request, res: Response) => {
       });
     }
 
-    // Check for scheduling conflicts
-    const existingAppointment = await db.collection('bookings').findOne({
+    // Check for scheduling conflicts and slot limit
+    const slotBookings = await db.collection('bookings').find({
       doctorId,
       appointmentDate,
       appointmentTime,
       status: { $nin: ['Cancelled', 'Rejected'] }
-    });
+    }).toArray();
 
-    if (existingAppointment) {
+    if (slotBookings.length >= 10) {
       return res.status(400).json({
-        error: 'Time slot already booked for this doctor'
+        error: 'This time slot is fully booked (max 10 patients). Please choose another slot.'
       });
     }
 
-    // Generate token number that resets daily (1, 2, 3, etc per day)
-    // Count bookings for this specific appointment date (not cancelled)
-    const bookingsForDate = await db.collection('bookings')
+    // Generate token number per slot (doctor, date, time)
+    const bookingsForSlot = await db.collection('bookings')
       .find({
-        appointmentDate: appointmentDate,
+        doctorId,
+        appointmentDate,
+        appointmentTime,
         status: { $ne: 'Cancelled' }
       })
       .toArray();
 
-    const tokenNumber = String(bookingsForDate.length + 1);
+    const tokenNumber = String(bookingsForSlot.length + 1);
 
     const result = await db.collection('bookings').insertOne({
       clinicId,

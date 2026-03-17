@@ -18,9 +18,10 @@ const ClinicCard: React.FC<ClinicCardProps> = ({ clinic }) => {
           </h3>
           <div className="flex items-center gap-2 mt-1">
             <StarRating rating={clinic.rating || 0} size="sm" />
-            <span className="text-xs text-gray-500">
+            {/* If reviewCount is needed, add it to Clinic type and uncomment below */}
+            {/* <span className="text-xs text-gray-500">
               ({clinic.reviewCount || 0} {(clinic.reviewCount === 1) ? 'review' : 'reviews'})
-            </span>
+            </span> */}
           </div>
         </div>
       </div>
