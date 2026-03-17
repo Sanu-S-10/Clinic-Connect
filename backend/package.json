@@ -1,0 +1,31 @@
+{
+  "name": "clinicconnect-backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx server.ts",
+    "dev": "tsx watch server.ts",
+    "admin:create": "node admin-backend/create-demo-admin.js",
+    "setup:demo": "npm run admin:create"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mongodb": "^7.0.0",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.14.0",
+    "@types/nodemailer": "^7.0.11",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2"
+  }
+}

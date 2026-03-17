@@ -1,0 +1,17 @@
+{
+  "name": "clinicconnect-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev:user": "npm run dev --prefix user-interface",
+    "dev:admin": "npm run dev --prefix admin-interface",
+    "dev": "concurrently \"npm run dev:user\" \"npm run dev:admin\"",
+    "build:user": "npm run build --prefix user-interface",
+    "build:admin": "npm run build --prefix admin-interface",
+    "build": "npm run build:user && npm run build:admin"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
