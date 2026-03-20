@@ -1,81 +1,188 @@
-# Deployment Guide: Clinic Connect
+# ClinicConnect — Deployment Guide
 
-This guide covers how to deploy the Clinic Connect monorepo. It is configured to deploy the entire **frontend** as a single application to **Vercel** and the entire **backend** as a single Web Service to **Render**.
+## Project Structure
 
-## 🗂 Project Structure Map
-
-- `frontend/` ➡️ Deploy to **Vercel** (Includes both User and Admin Interfaces)
-- `backend/` ➡️ Deploy to **Render** (Includes both User and Admin Backends via API Gateway)
-
----
-
-## 💻 Local Development
-
-To run the unified frontend (both User and Admin interfaces) locally for development:
-
-1. Open a terminal and navigate to the `frontend` directory: `cd frontend`
-2. Install dependencies (if you haven't already): `npm install`
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-   *This command will start both the user interface and admin interface simultaneously.*
+```
+Clinic-Connect/
+├── frontend/          → Deploy to Vercel
+│   ├── user-interface/
+│   ├── admin-interface/
+│   └── vite.config.ts
+└── backend/           → Deploy to Render
+    ├── user-backend/
+    ├── admin-backend/
+    └── server.ts
+```
 
 ---
 
-## 🚀 Deploying Frontend to Vercel
+## 🌐 Frontend — Deploy to Vercel
 
-The frontend is specifically configured to build both the user interface and the admin interface into a single Vercel project.
+### Step 1: Connect Repository
+1. Go to [vercel.com](https://vercel.com) → **New Project**
+2. Import your GitHub repo: `Sanu-S-10/Clinic-Connect`
+3. Set **Root Directory** to `frontend`
 
-### Steps for Deployment
+### Step 2: Configure Build Settings
 
-1. **Log In:** Go to your [Vercel Dashboard](https://vercel.com/dashboard) and click **Add New** -> **Project**.
-2. **Import Repository:** Select and import your `clinic-connect` Git repository.
-3. **Configure the Project:**
-   - **Project Name:** `clinic-connect-frontend`
-   - **Root Directory:** Click "Edit" and select `frontend`.
-   - **Framework Preset:** Vite (or Other - Vercel will run `npm run build` defined in `frontend/package.json`).
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-4. **Environment Variables:** Add your unified backend API URL here:
-   - `VITE_API_URL`: The URL of your Render backend (e.g., `https://your-backend-url.onrender.com/api`).
-5. **Deploy:** Click the **Deploy** button.
+| Setting | Value |
+|---|---|
+| **Framework Preset** | Vite |
+| **Root Directory** | `frontend` |
+| **Build Command** | `npm run build` |
+| **Output Directory** | `dist` |
+| **Install Command** | `npm install` |
 
-Once deployed, the User Interface will be available at the base URL (e.g., `https://your-frontend.vercel.app/`), and the Admin Interface will be securely available at the `/admin/` path (e.g., `https://your-frontend.vercel.app/admin/`).
+### Step 3: Environment Variables (Vercel)
+
+Go to **Project → Settings → Environment Variables** and add:
+
+| Variable | Value | Description |
+|---|---|---|
+| `VITE_API_URL` | `https://your-backend.onrender.com` | Your Render backend URL (set after deploying backend) |
+| `GEMINI_API_KEY` | `your-gemini-api-key` | Google Gemini API key for the AI chatbot |
+
+> **Note:** After you deploy the backend to Render and get the URL, come back and set `VITE_API_URL`.
+
+### Step 4: Update Frontend API Base URL
+
+Before deploying, update your API service file to use the environment variable.
+In `frontend/user-interface/services/api.ts` and `frontend/admin-interface/services/api.ts`,
+make sure the base URL reads from the env:
+
+```ts
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+```
+
+### Step 5: Deploy
+Click **Deploy**. Vercel will build and publish automatically.
+
+**Your app will be live at:**
+- User Interface: `https://your-app.vercel.app/user-interface/`
+- Admin Interface: `https://your-app.vercel.app/admin-interface/`
 
 ---
 
-## ☁️ Deploying Backend to Render
+## ⚙️ Backend — Deploy to Render
 
-The backend uses a single API Gateway (`backend/server.ts`) to serve both the User APIs (at `/api`) and Admin APIs (at `/admin-api`) on Render's single port.
+### Step 1: Create a New Web Service
+1. Go to [render.com](https://render.com) → **New → Web Service**
+2. Connect your GitHub repo: `Sanu-S-10/Clinic-Connect`
+3. Set **Root Directory** to `backend`
 
-### Steps for Deployment
+### Step 2: Configure Service Settings
 
-1. **Log In:** Go to your [Render Dashboard](https://dashboard.render.com/) and click **New +** -> **Web Service**.
-2. **Connect Repository:** Provide the link to your `clinic-connect` repository.
-3. **Configure the Service:**
-   - **Name:** `clinic-connect-backend`
-   - **Language:** `Node`
-   - **Root Directory:** Type `backend`
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm run start`
-   - **Instance Type:** Select "Free" (or another tier if needed).
-4. **Environment Variables:** Expand the "Advanced" section and add:
-   - `PORT`: `5000` (Or let Render assign it)
-   - `MONGODB_URI`: Your production database URL.
-   - `GEMINI_API_KEY`: Your Gemini API Key.
-   - `OTP_SECRET`: Secret key for JWT/OTP.
-   - Email configurations (`FROM_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`).
-   - `FRONTEND_URL`: The deployed Vercel URL (e.g., `https://your-frontend.vercel.app` - IMPORTANT for CORS!).
-5. **Deploy:** Click **Create Web Service**.
+| Setting | Value |
+|---|---|
+| **Environment** | Node |
+| **Root Directory** | `backend` |
+| **Build Command** | `npm install` |
+| **Start Command** | `npm start` |
+| **Node Version** | 18+ |
+
+### Step 3: Environment Variables (Render)
+
+Go to **Environment → Environment Variables** and add all of these:
+
+#### 🗄️ Database
+| Variable | Example Value | Description |
+|---|---|---|
+| `MONGODB_URI` | `mongodb+srv://user:pass@cluster.mongodb.net/clinicconnect?retryWrites=true&w=majority` | MongoDB Atlas connection string |
+
+#### 📧 Email (SMTP)
+| Variable | Example Value | Description |
+|---|---|---|
+| `FROM_EMAIL` | `youremail@gmail.com` | Sender email address |
+| `SMTP_HOST` | `smtp.gmail.com` | SMTP server host |
+| `SMTP_PORT` | `587` | SMTP port (587 for TLS) |
+| `SMTP_USER` | `youremail@gmail.com` | SMTP login username |
+| `SMTP_PASS` | `your-app-password` | Gmail App Password (not your Gmail password) |
+
+#### 🤖 AI Chatbot
+| Variable | Example Value | Description |
+|---|---|---|
+| `GEMINI_API_KEY` | `AIzaSy...` | Google Gemini API key |
+
+#### 🔐 OTP / Security
+| Variable | Example Value | Description |
+|---|---|---|
+| `OTP_SECRET` | `clinic-connect-otp-secret-key-2026` | Secret key for OTP hashing |
+| `OTP_TTL_MINUTES` | `10` | OTP expiry in minutes |
+| `OTP_MAX_ATTEMPTS` | `5` | Max OTP attempts before lockout |
+
+#### 🌐 Server
+| Variable | Example Value | Description |
+|---|---|---|
+| `PORT` | `5000` | Port (Render sets this automatically, but you can define it) |
+
+### Step 4: Fix CORS for Production
+
+In `backend/user-backend/index.ts` and `backend/admin-backend/index.ts`, update CORS to allow your Vercel domain:
+
+```ts
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://your-app.vercel.app'  // ← add your Vercel URL
+  ],
+  credentials: true
+}));
+```
+
+### Step 5: Deploy
+Click **Create Web Service**. Render will build and start your server.
+
+**Your backend will be live at:** `https://your-backend.onrender.com`
 
 ---
 
-## 🔄 Finalizing the Connection
+## 🔄 After Both Are Deployed
 
-Because the frontend and backend depend on each other's URLs (for API calls and CORS policies), follow these steps after the initial deployments:
+1. Copy your Render backend URL → go back to **Vercel → Environment Variables**
+2. Set `VITE_API_URL = https://your-backend.onrender.com`
+3. Redeploy the frontend on Vercel (or it will redeploy automatically on next push)
 
-1. **Get Backend URL:** Once Render is done deploying, copy the live URL for the backend.
-2. **Update Vercel Environment Variables:** Go into your Vercel Project Settings, and set `VITE_API_URL` to `https://<YOUR_RENDER_URL>/api`. If you made changes, trigger a new deployment in Vercel.
-3. **Get Frontend URL:** Copy the live URL for the Vercel frontend.
-4. **Update Render Environment Variables:** Go to your Render Web Service settings and ensure the `FRONTEND_URL` environment variable perfectly matches the Vercel URL. If you made changes, Render will automatically spin up a new instance.
+---
+
+## 📋 Environment Variables Quick Reference
+
+### Backend (Render) — All Required
+
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/clinicconnect
+GEMINI_API_KEY=your_gemini_api_key
+FROM_EMAIL=youremail@gmail.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=youremail@gmail.com
+SMTP_PASS=your_gmail_app_password
+OTP_SECRET=your_random_secret_string
+OTP_TTL_MINUTES=10
+OTP_MAX_ATTEMPTS=5
+```
+
+### Frontend (Vercel) — Required
+
+```env
+VITE_API_URL=https://your-backend.onrender.com
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+---
+
+## 🔑 How to Get Each Secret
+
+| Secret | How to Get |
+|---|---|
+| `MONGODB_URI` | [MongoDB Atlas](https://cloud.mongodb.com) → Cluster → Connect → Drivers |
+| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/app/apikey) → Create API Key |
+| `SMTP_PASS` | Gmail → Account → Security → 2-Step Verification → App Passwords → Generate |
+
+---
+
+## ⚠️ Important Notes
+
+- **Never commit `.env.local`** to Git — it's already in `.gitignore` ✅
+- **Free Render tier** spins down after 15 minutes of inactivity — first request after sleep may be slow (~30s)
+- **MongoDB Atlas** free tier (M0) is sufficient for development and small production use
+- Make sure your MongoDB Atlas cluster allows connections from **all IPs** (`0.0.0.0/0`) or add Render's IP ranges
