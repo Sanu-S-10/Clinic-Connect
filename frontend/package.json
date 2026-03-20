@@ -9,18 +9,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "framer-motion": "^12.4.11",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^0.477.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.13.0",
-    "html2canvas": "^1.4.1",
-    "lucide-react": "^0.477.0",
-    "framer-motion": "^12.4.11"
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
+    "@types/node": "^22.13.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@types/node": "^22.13.0",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
