@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Home from './pages/Home';
 import Directory from './pages/Directory';
 import ClinicDetails from './pages/ClinicDetails';
@@ -846,6 +847,7 @@ const App: React.FC = () => {
     <Router>
       <AuthProvider>
         <AppLayout />
+        <Analytics />
       </AuthProvider>
     </Router>
   );
