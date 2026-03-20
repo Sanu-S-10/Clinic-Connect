@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 
 // Test MongoDB connection
-app.get('/api/health', async (req: Request, res: Response) => {
+app.get('/health', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     await db.command({ ping: 1 });
@@ -35,7 +35,7 @@ app.get('/api/health', async (req: Request, res: Response) => {
 });
 
 // Example: Get all clinics
-app.get('/api/clinics', async (req: Request, res: Response) => {
+app.get('/clinics', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     
@@ -71,7 +71,7 @@ app.get('/api/clinics', async (req: Request, res: Response) => {
 });
 
 // Debug endpoint: Check clinic counts
-app.get('/api/debug/clinic-counts', async (req: Request, res: Response) => {
+app.get('/debug/clinic-counts', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const clinicCount = await db.collection('clinics').countDocuments();
@@ -94,7 +94,7 @@ app.get('/api/debug/clinic-counts', async (req: Request, res: Response) => {
 });
 
 // Example: Create a new clinic
-app.post('/api/clinics', async (req: Request, res: Response) => {
+app.post('/clinics', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const result = await db.collection('clinics').insertOne(req.body);
@@ -111,7 +111,7 @@ app.post('/api/clinics', async (req: Request, res: Response) => {
 });
 
 // Get clinic details by ID (for clinic admin dashboard)
-app.get('/api/clinics/:id', async (req: Request, res: Response) => {
+app.get('/clinics/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -141,7 +141,7 @@ app.get('/api/clinics/:id', async (req: Request, res: Response) => {
 });
 
 // Get clinic reviews
-app.get('/api/clinics/:id/reviews', async (req: Request, res: Response) => {
+app.get('/clinics/:id/reviews', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -170,7 +170,7 @@ app.get('/api/clinics/:id/reviews', async (req: Request, res: Response) => {
 });
 
 // Add a clinic review
-app.post('/api/clinics/:id/reviews', async (req: Request, res: Response) => {
+app.post('/clinics/:id/reviews', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -244,7 +244,7 @@ app.post('/api/clinics/:id/reviews', async (req: Request, res: Response) => {
 
 
 // Edit a clinic review
-app.put('/api/clinics/:clinicId/reviews/:reviewId', async (req: Request, res: Response) => {
+app.put('/clinics/:clinicId/reviews/:reviewId', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { clinicId, reviewId } = req.params as { clinicId: string, reviewId: string };
@@ -299,7 +299,7 @@ app.put('/api/clinics/:clinicId/reviews/:reviewId', async (req: Request, res: Re
 });
 
 // Delete a clinic review
-app.delete('/api/clinics/:clinicId/reviews/:reviewId', async (req: Request, res: Response) => {
+app.delete('/clinics/:clinicId/reviews/:reviewId', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { clinicId, reviewId } = req.params as { clinicId: string, reviewId: string };
@@ -347,7 +347,7 @@ app.delete('/api/clinics/:clinicId/reviews/:reviewId', async (req: Request, res:
 });
 
 // Update clinic details (clinic admin dashboard) - updates both clinics and clinicRegistrations
-app.put('/api/clinics/:id', async (req: Request, res: Response) => {
+app.put('/clinics/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -401,7 +401,7 @@ app.put('/api/clinics/:id', async (req: Request, res: Response) => {
 });
 
 // Get all doctors (can filter by clinicId if provided)
-app.get('/api/doctors', async (req: Request, res: Response) => {
+app.get('/doctors', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { clinicId } = req.query;
@@ -424,7 +424,7 @@ app.get('/api/doctors', async (req: Request, res: Response) => {
 });
 
 // Create a new doctor
-app.post('/api/doctors', async (req: Request, res: Response) => {
+app.post('/doctors', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { name, specialty, clinicId, email, experience, previouslyWorked, active, image, clinicName, workingDays, workingHours } = req.body;
@@ -463,7 +463,7 @@ app.post('/api/doctors', async (req: Request, res: Response) => {
 });
 
 // Update doctor
-app.put('/api/doctors/:id', async (req: Request, res: Response) => {
+app.put('/doctors/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -496,7 +496,7 @@ app.put('/api/doctors/:id', async (req: Request, res: Response) => {
 });
 
 // Delete doctor
-app.delete('/api/doctors/:id', async (req: Request, res: Response) => {
+app.delete('/doctors/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -526,7 +526,7 @@ app.delete('/api/doctors/:id', async (req: Request, res: Response) => {
 });
 
 // Fix endpoint: Update doctor's clinicId to match clinic's actual ID
-app.put('/api/doctors/:doctorId/fix-clinic/:clinicId', async (req: Request, res: Response) => {
+app.put('/doctors/:doctorId/fix-clinic/:clinicId', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { doctorId, clinicId } = req.params as { doctorId: string; clinicId: string };
@@ -563,7 +563,7 @@ app.put('/api/doctors/:doctorId/fix-clinic/:clinicId', async (req: Request, res:
 });
 
 // Get bookings (can filter by clinicId, doctorId, patientName, or patientPhone)
-app.get('/api/bookings', async (req: Request, res: Response) => {
+app.get('/bookings', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { clinicId, doctorId, patientName, patientPhone, includeCancelled } = req.query;
@@ -616,7 +616,7 @@ app.get('/api/bookings', async (req: Request, res: Response) => {
 });
 
 // Create a booking (appointment)
-app.post('/api/bookings', async (req: Request, res: Response) => {
+app.post('/bookings', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { clinicId, doctorId, patientName, patientEmail, patientPhone, appointmentDate, appointmentTime, notes, userId } = req.body;
@@ -674,7 +674,7 @@ app.post('/api/bookings', async (req: Request, res: Response) => {
 });
 
 // Update booking (status, date/time, notes)
-app.put('/api/bookings/:id', async (req: Request, res: Response) => {
+app.put('/bookings/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -730,7 +730,7 @@ app.put('/api/bookings/:id', async (req: Request, res: Response) => {
 });
 
 // Cancel appointment
-app.put('/api/bookings/:id/cancel', async (req: Request, res: Response) => {
+app.put('/bookings/:id/cancel', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -758,7 +758,7 @@ app.put('/api/bookings/:id/cancel', async (req: Request, res: Response) => {
 });
 
 // Cancel appointment by user (soft delete with cancellation status)
-app.delete('/api/bookings/:id', async (req: Request, res: Response) => {
+app.delete('/bookings/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -793,7 +793,7 @@ app.delete('/api/bookings/:id', async (req: Request, res: Response) => {
 });
 
 // Cancel appointment by clinic admin
-app.put('/api/bookings/:id/cancel-by-clinic', async (req: Request, res: Response) => {
+app.put('/bookings/:id/cancel-by-clinic', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -828,7 +828,7 @@ app.put('/api/bookings/:id/cancel-by-clinic', async (req: Request, res: Response
 });
 
 // Get bookings by user ID (appointments booked by a specific user)
-app.get('/api/bookings/user/:userId', async (req: Request, res: Response) => {
+app.get('/bookings/user/:userId', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { userId } = req.params as { userId: string };
@@ -903,7 +903,7 @@ app.get('/api/bookings/user/:userId', async (req: Request, res: Response) => {
 });
 
 // Login: Authenticate user and return user data (no password)
-app.post('/api/users/login', async (req: Request, res: Response) => {
+app.post('/users/login', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { email, password } = req.body;
@@ -999,7 +999,7 @@ app.post('/api/users/login', async (req: Request, res: Response) => {
 });
 
 // Get all users with safe fields (Admin view)
-app.get('/api/users', async (req: Request, res: Response) => {
+app.get('/users', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
 
@@ -1058,7 +1058,7 @@ app.get('/api/users', async (req: Request, res: Response) => {
 });
 
 // Delete a user (Admin only)
-app.delete('/api/users/:userId', async (req: Request, res: Response) => {
+app.delete('/users/:userId', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { ObjectId } = await import('mongodb');
@@ -1092,7 +1092,7 @@ app.delete('/api/users/:userId', async (req: Request, res: Response) => {
 });
 
 // Revoke user access (set isActive=false)
-app.put('/api/users/:userId/revoke', async (req: Request, res: Response) => {
+app.put('/users/:userId/revoke', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { ObjectId } = await import('mongodb');
@@ -1110,7 +1110,7 @@ app.put('/api/users/:userId/revoke', async (req: Request, res: Response) => {
 });
 
 // Grant user access (set isActive=true)
-app.put('/api/users/:userId/grant', async (req: Request, res: Response) => {
+app.put('/users/:userId/grant', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { ObjectId } = await import('mongodb');
@@ -1128,7 +1128,7 @@ app.put('/api/users/:userId/grant', async (req: Request, res: Response) => {
 });
 
 // Send OTP for passwordless auth / reset
-app.post('/api/auth/send-otp', async (req: Request, res: Response) => {
+app.post('/auth/send-otp', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     console.log('[send-otp] Received request for email:', email);
@@ -1165,7 +1165,7 @@ app.post('/api/auth/send-otp', async (req: Request, res: Response) => {
 });
 
 // Verify OTP
-app.post('/api/auth/verify-otp', async (req: Request, res: Response) => {
+app.post('/auth/verify-otp', async (req: Request, res: Response) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ ok: false, message: 'Email and OTP are required' });
@@ -1212,7 +1212,7 @@ app.post('/api/auth/verify-otp', async (req: Request, res: Response) => {
 });
 
 // Reset password after OTP verification
-app.post('/api/auth/reset-password', async (req: Request, res: Response) => {
+app.post('/auth/reset-password', async (req: Request, res: Response) => {
   try {
     const { email, newPassword } = req.body;
     if (!email || !newPassword) return res.status(400).json({ ok: false, message: 'Email and newPassword are required' });
@@ -1243,7 +1243,7 @@ app.post('/api/auth/reset-password', async (req: Request, res: Response) => {
 });
 
 // Debug: send a test email (development only)
-app.post('/api/debug/send-test-email', async (req: Request, res: Response) => {
+app.post('/debug/send-test-email', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ ok: false, message: 'Email is required' });
@@ -1256,7 +1256,7 @@ app.post('/api/debug/send-test-email', async (req: Request, res: Response) => {
 });
 
 // Change Password
-app.put('/api/users/:userId/change-password', async (req: Request, res: Response) => {
+app.put('/users/:userId/change-password', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { userId } = req.params as { userId: string };
@@ -1306,7 +1306,7 @@ app.put('/api/users/:userId/change-password', async (req: Request, res: Response
 });
 
 // Signup: Create a new user account
-app.post('/api/users/signup', async (req: Request, res: Response) => {
+app.post('/users/signup', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { name, email, phone, password, role } = req.body;
@@ -1340,7 +1340,7 @@ app.post('/api/users/signup', async (req: Request, res: Response) => {
 // ====================== CLINIC REGISTRATION ENDPOINTS ======================
 
 // Register a new clinic (creates entry with 'pending' status)
-app.post('/api/clinics/register', async (req: Request, res: Response) => {
+app.post('/clinics/register', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { name, email, phone, address, location, specialties, password, confirmPassword } = req.body;
@@ -1397,7 +1397,7 @@ app.post('/api/clinics/register', async (req: Request, res: Response) => {
 });
 
 // Get all pending clinic registrations (Admin only)
-app.get('/api/clinics/registrations/pending', async (req: Request, res: Response) => {
+app.get('/clinics/registrations/pending', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const pendingClinics = await db
@@ -1421,7 +1421,7 @@ app.get('/api/clinics/registrations/pending', async (req: Request, res: Response
 });
 
 // Get all approved clinic registrations (Admin only)
-app.get('/api/clinics/registrations/approved', async (req: Request, res: Response) => {
+app.get('/clinics/registrations/approved', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const approvedClinics = await db
@@ -1445,7 +1445,7 @@ app.get('/api/clinics/registrations/approved', async (req: Request, res: Respons
 });
 
 // Get all rejected clinic registrations (Admin only)
-app.get('/api/clinics/registrations/rejected', async (req: Request, res: Response) => {
+app.get('/clinics/registrations/rejected', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const rejectedClinics = await db
@@ -1469,7 +1469,7 @@ app.get('/api/clinics/registrations/rejected', async (req: Request, res: Respons
 });
 
 // Get all clinic registrations (any status) (Admin only)
-app.get('/api/clinics/registrations', async (req: Request, res: Response) => {
+app.get('/clinics/registrations', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const clinics = await db
@@ -1493,7 +1493,7 @@ app.get('/api/clinics/registrations', async (req: Request, res: Response) => {
 });
 
 // Approve clinic registration (Admin only)
-app.put('/api/clinics/registrations/:id/approve', async (req: Request, res: Response) => {
+app.put('/clinics/registrations/:id/approve', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -1572,7 +1572,7 @@ app.put('/api/clinics/registrations/:id/approve', async (req: Request, res: Resp
 });
 
 // Reject clinic registration (Admin only)
-app.put('/api/clinics/registrations/:id/reject', async (req: Request, res: Response) => {
+app.put('/clinics/registrations/:id/reject', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -1619,7 +1619,7 @@ app.put('/api/clinics/registrations/:id/reject', async (req: Request, res: Respo
 });
 
 // Revoke clinic approval (Admin only)
-app.put('/api/clinics/registrations/:id/revoke', async (req: Request, res: Response) => {
+app.put('/clinics/registrations/:id/revoke', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -1678,7 +1678,7 @@ app.put('/api/clinics/registrations/:id/revoke', async (req: Request, res: Respo
 });
 
 // Delete Clinic
-app.delete('/api/clinics/:id', async (req: Request, res: Response) => {
+app.delete('/clinics/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -1735,7 +1735,7 @@ app.delete('/api/clinics/:id', async (req: Request, res: Response) => {
 });
 
 // Get clinic registration by ID
-app.get('/api/clinics/registrations/:id', async (req: Request, res: Response) => {
+app.get('/clinics/registrations/:id', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { id } = req.params as { id: string };
@@ -1770,7 +1770,7 @@ app.get('/api/clinics/registrations/:id', async (req: Request, res: Response) =>
 
 
 // Create Admin Account (for admin creation/registration)
-app.post('/api/admins/create', async (req: Request, res: Response) => {
+app.post('/admins/create', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const { fullName, email, password } = req.body;
@@ -1826,7 +1826,7 @@ app.post('/api/admins/create', async (req: Request, res: Response) => {
 });
 
 // Get all admins (for admin management - requires authentication in production)
-app.get('/api/admins', async (req: Request, res: Response) => {
+app.get('/admins', async (req: Request, res: Response) => {
   try {
     const { db } = await connectToDatabase();
     const admins = await db
@@ -1850,7 +1850,7 @@ app.get('/api/admins', async (req: Request, res: Response) => {
 });
 
 // Contact form endpoint
-app.post('/api/contact', async (req: Request, res: Response) => {
+app.post('/contact', async (req: Request, res: Response) => {
   try {
     const { name, email, message } = req.body;
 
@@ -1888,7 +1888,7 @@ app.post('/api/contact', async (req: Request, res: Response) => {
 });
 
 // Chatbot endpoint
-app.post('/api/chatbot', async (req: Request, res: Response) => {
+app.post('/chatbot', async (req: Request, res: Response) => {
   try {
     const { message } = req.body;
 
